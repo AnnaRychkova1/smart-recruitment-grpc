@@ -1,0 +1,57 @@
+# Node.js
+node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependency directories
+jspm_packages/
+
+# Build directories
+dist/
+build/
+public/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# VSCode settings
+.vscode/
+
+# IDE/Editor files
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# MacOS-specific
+*.swp
+
+# Windows-specific
+Thumbs.db
+Desktop.ini
+
+# npm packages
+package-lock.json
+yarn.lock
+
+# Testing & Coverage
+coverage/
+
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Optional: ignore these if you're using a database with migrations
+migrations/

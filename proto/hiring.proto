@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package hiring;
+
+service HiringService {
+  // Simple RPC
+  rpc AddCandidate (CandidateRequest) returns (StatusResponse);
+
+  // Server Streaming RPC
+  rpc GetAllCandidates (Empty) returns (stream CandidateResponse);
+}
+
+message CandidateRequest {
+  string name = 1;
+  string email = 2;
+  string position = 3;
+  int32 experience = 4;
+}
+
+message CandidateResponse {
+  string name = 1;
+  string email = 2;
+  string position = 3;
+  int32 experience = 4;
+}
+
+message StatusResponse {
+  string message = 1;
+}
+
+message Empty {}

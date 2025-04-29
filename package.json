@@ -1,0 +1,29 @@
+{
+  "name": "smart-recruitment-grpc",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "gui/app.js",
+  "scripts": {
+    "start": "concurrently npm:server:hiring npm:server:filtering npm:server:interview npm:client",
+    "client": "nodemon gui/app.js",
+    "server:hiring": "nodemon services/hiring/server.js",
+    "server:filtering": "nodemon services/filtering/server.js",
+    "server:interview": "nodemon services/interview/server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@grpc/grpc-js": "^1.13.3",
+    "@grpc/proto-loader": "^0.7.15",
+    "concurrently": "^9.1.2",
+    "dotenv": "^16.5.0",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "multer": "^1.4.5-lts.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
