@@ -7,21 +7,39 @@ service HiringService {
   rpc AddCandidate (CandidateRequest) returns (StatusResponse);
 
   // Server Streaming RPC
-  rpc GetAllCandidates (Empty) returns (stream CandidateResponse);
+  rpc GetAllCandidates (Empty) returns (stream Candidate);
+
+  // Update candidate
+  rpc UpdateCandidate (CandidateRequest) returns (StatusResponse);
+
+  // Delete candidate
+  rpc DeleteCandidate (DeleteRequest) returns (DeleteCandidateResponse);
 }
 
 message CandidateRequest {
-  string name = 1;
-  string email = 2;
-  string position = 3;
-  int32 experience = 4;
+  string id = 1;
+  string name = 2;
+  string email = 3;
+  string position = 4;
+  int32 experience = 5;
+  string pathCV = 6;
 }
 
-message CandidateResponse {
-  string name = 1;
-  string email = 2;
-  string position = 3;
-  int32 experience = 4;
+message Candidate {
+  string id = 1;
+  string name = 2;
+  string email = 3;
+  string position = 4;
+  int32 experience = 5;
+  string pathCV = 6;
+}
+
+message DeleteRequest {
+  string id = 1;
+}
+
+message DeleteCandidateResponse{
+  string message = 1;
 }
 
 message StatusResponse {

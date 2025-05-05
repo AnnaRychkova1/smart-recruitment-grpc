@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package filtering;
+
+// Service definition for filtering and deleting candidates
+service FilteringService {
+
+  // RPC for filtering candidates based on experience and position
+  // The response returns a stream of candidates
+  rpc FilterCandidates (FilterRequest) returns (stream Candidate);
+
+  // RPC for deleting a candidate
+  rpc DeleteCandidate (DeleteRequest) returns (StatusResponse);
+}
+
+// Message for filtering candidates by minimum and maximum experience and position
+message FilterRequest {
+  int32 minExperience = 1; // Minimum experience (in years)
+  int32 maxExperience = 2; // Maximum experience (in years)
+  string position = 3; // Position (optional, can be an empty string)
+}
+
+// Message for candidate information
+message Candidate {
+  string id = 1; // Unique identifier of the candidate
+  string name = 2; // Name of the candidate
+  string email = 3; // Email of the candidate
+  string position = 4; // Position of the candidate
+  int32 experience = 5; // Experience of the candidate (in years)
+  string pathCV = 6; // Path to the candidate's CV (this can be changed to `bytes` if you want to send the actual file)
+}
+
+// Message for the request to delete a candidate
+message DeleteRequest {
+  string id = 1; // ID of the candidate to be deleted
+}
+
+// Message for the response status of an operation
+message StatusResponse {
+  string message = 1; // Message about the result of the operation (e.g., "Candidate successfully deleted")
+}

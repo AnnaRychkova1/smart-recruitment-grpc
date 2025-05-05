@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package interview;
+
+// Service for scheduling, editing, and deleting interviews
+service InterviewService {
+  
+  // RPC for scheduling interviews for candidates
+  rpc ScheduleInterviews (ScheduleRequest) returns (ScheduleResponse);
+
+  // RPC for editing an existing interview
+  rpc EditInterview (EditInterviewRequest) returns (EditInterviewResponse);
+
+  // RPC for deleting an interview
+  rpc DeleteInterview (DeleteInterviewRequest) returns (DeleteInterviewResponse);
+}
+
+// Request message to schedule interviews
+message ScheduleRequest {
+  repeated CandidateScheduleRequest candidates = 1; // List of candidates to schedule interviews for
+  string date = 2; // The date for the interview
+}
+
+// Candidate schedule request message
+message CandidateScheduleRequest {
+  string id = 1; // Unique identifier for the candidate
+  string name = 2; // Name of the candidate
+}
+
+// Scheduled candidate message
+message ScheduledCandidate {
+  string id = 1; // Unique identifier of the scheduled candidate
+  string name = 2; // Name of the scheduled candidate
+  string date = 3; // Scheduled date of the interview
+  string time = 4; // Scheduled time of the interview
+}
+
+// Response message for scheduling interviews
+message ScheduleResponse {
+  string message = 1; // Message describing the outcome of the scheduling
+  repeated ScheduledCandidate scheduled = 2; // List of candidates successfully scheduled
+}
+
+// Request message to edit an existing interview
+message EditInterviewRequest {
+  string id = 1; // Unique identifier of the interview to be edited
+  string new_date = 2; // New date for the interview
+  string new_time = 3; // New time for the interview
+}
+
+// Response message for editing an interview
+message EditInterviewResponse {
+  string message = 1; // Message describing the outcome of the edit
+  ScheduledCandidate updated = 2; // Updated information for the edited interview
+}
+
+// Request message to delete an interview
+message DeleteInterviewRequest {
+  string id = 1; // Unique identifier of the interview to be deleted
+}
+
+// Response message for deleting an interview
+message DeleteInterviewResponse {
+  string message = 1; // Message describing the outcome of the delete operation
+  string id = 2; // ID of the deleted interview
+}
