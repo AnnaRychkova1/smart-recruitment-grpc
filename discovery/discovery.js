@@ -1,5 +1,3 @@
-// discovery.js
-
 import express from "express";
 import dotenv from "dotenv";
 
@@ -8,8 +6,9 @@ const app = express();
 app.use(express.json());
 
 const registry = {};
+const TTL = 60 * 1000; // Service TTL (60 seconds)
 
-// Registration services: POST /register
+// Service registration or update
 app.post("/register", (req, res) => {
   const { serviceName, host, port } = req.body;
 
@@ -17,19 +16,31 @@ app.post("/register", (req, res) => {
     return res.status(400).json({ error: "Missing fields in registration." });
   }
 
-  // Check for the existence of the service in the registry
-  if (registry[serviceName]) {
-    return res.status(400).json({
-      error: `${serviceName} is already registered at ${registry[serviceName].host}:${registry[serviceName].port}`,
-    });
+  const existing = registry[serviceName];
+
+  // If the service already exists, update the timestamp (lastSeen)
+  if (existing) {
+    registry[serviceName] = {
+      host,
+      port,
+      lastSeen: Date.now(), // Update the lastSeen time
+    };
+    console.log(`🔁 ${serviceName} already registered, updating lastSeen.`);
+    return res.status(200).json({ message: "Service updated successfully" });
   }
 
-  registry[serviceName] = { host, port };
+  // If the service is new, register it
+  registry[serviceName] = {
+    host,
+    port,
+    lastSeen: Date.now(),
+  };
+
   console.log(`✅ Registered: ${serviceName} at ${host}:${port}`);
-  res.status(200).json({ message: "Service registered successfully" });
+  res.status(201).json({ message: "Service registered successfully" });
 });
 
-// Get service addresses GET /services/HiringService
+// Get service information
 app.get("/services/:serviceName", (req, res) => {
   const serviceInfo = registry[req.params.serviceName];
   if (!serviceInfo) {
@@ -38,6 +49,17 @@ app.get("/services/:serviceName", (req, res) => {
 
   res.json(serviceInfo);
 });
+
+// Automatic removal of inactive services
+setInterval(() => {
+  const now = Date.now();
+  for (const [name, service] of Object.entries(registry)) {
+    if (now - service.lastSeen > TTL) {
+      delete registry[name];
+      console.log(`🗑️ Auto-removed inactive service: ${name}`);
+    }
+  }
+}, 2 * 60 * 60 * 1000); // Check every 2 hours (2 * 60 * 60 * 1000 ms)
 
 const PORT = process.env.DISCOVERY_PORT || 3001;
 app.listen(PORT, () => {

@@ -50,6 +50,7 @@ export async function FilterCandidates(call, callback) {
 
   try {
     const hiringClient = await getHiringServiceClient(); // Get the HiringService client
+    console.log("i call HiringService on FilteringService");
     const allCandidates = []; // Array to store all candidates fetched
     const seenCandidateIds = new Set(); // Set to track seen candidate IDs and avoid duplicates
 
@@ -105,7 +106,9 @@ export async function FilterCandidates(call, callback) {
           console.warn(`⚠️ Failed to process CV for ${c.name}:`, cvErr.message);
         }
       }
-
+      if (filtered.length === 0) {
+        console.log("❌ No candidates found matching the criteria.");
+      }
       // Log the number of candidates that passed AI filtering
       console.log(`✅ ${filtered.length} candidates passed AI filtering.`);
 
@@ -114,6 +117,7 @@ export async function FilterCandidates(call, callback) {
         call.write(candidate); // Stream each filtered candidate to the client
       });
 
+      filtered.length = 0;
       // End the stream after sending all filtered candidates
       call.end();
     });
@@ -178,16 +182,29 @@ server.bindAsync(
 
     // 📡 Register this service with the service discovery system
     fetch("http://localhost:3001/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", // Use POST method to register the service
+      headers: { "Content-Type": "application/json" }, // Specify the request content type
       body: JSON.stringify({
-        serviceName: "FilteringService", // Register service name
-        host: HOST, // Register host address
-        port: PORT, // Register port
+        serviceName: "FilteringService", // The name of the service being registered
+        host: HOST, // The host address where the service is running
+        port: PORT, // The port where the service is available
       }),
     })
-      .then((res) => res.json())
-      .then((data) => console.log("📡 Registered with discovery:", data)) // Log successful registration
-      .catch((err) => console.error("❌ Discovery registration failed:", err)); // Log error if registration fails
+      .then((res) => {
+        // Check if the response status is within the 2xx range (successful)
+        if (!res.ok) {
+          // If the response is not successful, throw an error with status text
+          throw new Error(`Discovery registration failed: ${res.statusText}`);
+        }
+        return res.json(); // Parse the response body as JSON if successful
+      })
+      .then((data) => {
+        // Log the successful registration information from the discovery service
+        console.log("📡 Registered with discovery:", data);
+      })
+      .catch((err) => {
+        // Log any error that occurs during the registration process
+        console.error("❌ Discovery registration failed:", err);
+      });
   }
 );

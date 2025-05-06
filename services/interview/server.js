@@ -162,16 +162,29 @@ server.bindAsync(
 
     // 📡 Register this service in the service discovery system
     fetch("http://localhost:3001/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", // Using POST method to register the service with the discovery system
+      headers: { "Content-Type": "application/json" }, // Set the content type as JSON
       body: JSON.stringify({
-        serviceName: "InterviewService", // Register the service name
-        host: HOST, // Register the host address
-        port: PORT, // Register the port
+        serviceName: "InterviewService", // The name of the service being registered
+        host: HOST, // The host where the service is running
+        port: PORT, // The port where the service can be accessed
       }),
     })
-      .then((res) => res.json())
-      .then((data) => console.log("📡 Registered with discovery", data)) // Log successful registration
-      .catch((err) => console.error("❌ Discovery registration failed:", err)); // Log any registration errors
+      .then((res) => {
+        // Check if the response is successful (status code 2xx)
+        if (!res.ok) {
+          // If the response is not successful, throw an error with the response status
+          throw new Error(`Discovery registration failed: ${res.statusText}`);
+        }
+        return res.json(); // If the request is successful, parse the response as JSON
+      })
+      .then((data) => {
+        // Log the successful registration of the InterviewService
+        console.log("📡 Registered with discovery:", data);
+      })
+      .catch((err) => {
+        // Log any errors encountered during the registration process
+        console.error("❌ Discovery registration failed:", err);
+      });
   }
 );

@@ -83,4 +83,49 @@ function DeleteCandidate(call, callback) {
 const server = new grpc.Server();
 
 // Add the HiringService with its methods to the server
-server.add;
+server.addService(hiringProto.HiringService.service, {
+  AddCandidate,
+  GetAllCandidates,
+  UpdateCandidate,
+  DeleteCandidate,
+});
+
+// Define the port and host for the server
+const PORT = process.env.HIRING_PORT || 50051; // Default to port 50051 if not set
+const HOST = "localhost";
+
+// Bind the server to the specified address and port
+server.bindAsync(
+  `0.0.0.0:${PORT}`,
+  grpc.ServerCredentials.createInsecure(),
+  () => {
+    console.log(`🚀 HiringService running on port ${PORT}`); // Log server start
+
+    // 📡 Register this service with the service discovery system
+    fetch("http://localhost:3001/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        serviceName: "HiringService", // The name of the service being registered
+        host: HOST, // The host address of the service
+        port: PORT, // The port the service is running on
+      }),
+    })
+      .then((res) => {
+        // Check if the response status is in the 2xx range (successful request)
+        if (!res.ok) {
+          // If the response is not successful, throw an error with the status text
+          throw new Error(`Discovery registration failed: ${res.statusText}`);
+        }
+        return res.json(); // If successful, parse the response as JSON
+      })
+      .then((data) => {
+        // Log the response from the discovery service (successful registration)
+        console.log("📡 Registered with discovery:", data);
+      })
+      .catch((err) => {
+        // Log any error that occurred during the registration process
+        console.error("❌ Discovery registration failed:", err);
+      });
+  }
+);
