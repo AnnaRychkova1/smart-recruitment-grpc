@@ -3,8 +3,23 @@ import protoLoader from "@grpc/proto-loader";
 import path from "path";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
+import { MongoClient } from "mongodb";
+import { ObjectId } from "mongodb";
 
 dotenv.config();
+
+const uri = process.env.MONGO_URI;
+const client = new MongoClient(uri);
+
+let db;
+let candidatesCollection;
+
+async function connectDB() {
+  await client.connect();
+  db = client.db("hiring-db");
+  candidatesCollection = db.collection("candidates");
+  console.log("✅ Connected to MongoDB");
+}
 
 // Define the path to the .proto file
 const PROTO_PATH = path.join(process.cwd(), "proto", "hiring.proto");
@@ -13,70 +28,218 @@ const PROTO_PATH = path.join(process.cwd(), "proto", "hiring.proto");
 const packageDef = protoLoader.loadSync(PROTO_PATH);
 const hiringProto = grpc.loadPackageDefinition(packageDef).hiring;
 
-// In-memory array to store candidates
-const candidates = [];
-
-// Function to handle adding a new candidate
-function AddCandidate(call, callback) {
+// Function to add candidate
+async function AddCandidate(call, callback) {
   const candidate = call.request;
-  candidates.push(candidate);
-  console.log(`📥 Candidate ${candidate.name} successfully added!`); // Log candidate addition
-  callback(null, {
-    message: `Candidate ${candidate.name} successfully added!`, // Send confirmation response
-  });
+
+  try {
+    // const existing = await candidatesCollection.findOne({ email: candidate.email });
+    // if (existing) {
+    //   return callback(null, {
+    //     status: 409,
+    //     message: "Conflict: Candidate with this ID already exists.",
+    //     candidate: existing,
+    //   });
+    // }
+
+    if (
+      !candidate.name ||
+      !candidate.email ||
+      !candidate.position ||
+      candidate.experience < 0 ||
+      !candidate.pathCV
+    ) {
+      return callback(
+        {
+          status: 400, // 400 Bad Request
+          message:
+            "Bad Request: All fields (id, name, email, position, experience, pathCV) are required.",
+          candidate: null,
+        },
+
+        null
+      );
+    }
+
+    if (typeof candidate.experience !== "number" || candidate.experience < 0) {
+      return callback(
+        {
+          status: 422, // 422 Unprocessable Entity
+          message:
+            "Unprocessable Entity: Experience must be a positive number.",
+          candidate: null,
+        },
+        null
+      );
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(candidate.email)) {
+      return callback(
+        {
+          status: 422, // 422 Unprocessable Entity
+          message: "Unprocessable Entity: Invalid email format.",
+          candidate: null,
+        },
+        null
+      );
+    }
+    // Add candidate to DB
+    await candidatesCollection.insertOne(candidate);
+    console.log(`📥 Candidate ${candidate.name} added to DB`);
+
+    // Response
+    callback(null, {
+      status: 201, // 201 Created
+      message: `📥 Candidate ${candidate.name} created successfully.`,
+      candidate: candidate,
+    });
+  } catch (err) {
+    console.error("❌ DB Insert Error:", err.message);
+    callback(null, {
+      status: 500,
+      message: "Internal Server Error: Unable to add candidate.",
+      candidate: null,
+      error: err.message,
+    });
+  }
 }
 
 // Function to handle retrieving all candidates
-function GetAllCandidates(call) {
-  console.log("📤 Sending all candidates..."); // Log when sending candidate data
-  candidates.forEach((candidate) => {
-    call.write(candidate); // Stream each candidate to the client
-  });
-  call.end(); // Close the stream after sending all candidates
+async function GetAllCandidates(call) {
+  console.log("📤 Fetching candidates from DB...");
+
+  try {
+    const candidatesArray = await candidatesCollection.find().toArray();
+
+    if (candidatesArray.length === 0) {
+      console.log("🔴 No candidates found. Ending stream cleanly.");
+      return call.end();
+    }
+
+    for (const candidate of candidatesArray) {
+      call.write(candidate);
+    }
+
+    console.log("🟢 Candidates streamed successfully.");
+    call.end();
+  } catch (err) {
+    console.error(`❌ DB Fetch Error: ${err.name}: ${err.message}`);
+    call.destroy({
+      code: grpc.status.INTERNAL,
+      message: "Failed to fetch candidates from the database.",
+    });
+  }
 }
 
 // Function to handle updating an existing candidate
-function UpdateCandidate(call, callback) {
-  const updated = call.request;
-  const index = candidates.findIndex((c) => c.id === updated.id);
+async function UpdateCandidate(call, callback) {
+  const toUpdate = call.request;
+  try {
+    // Basic validation
+    if (
+      !toUpdate._id ||
+      !toUpdate.name ||
+      !toUpdate.email ||
+      !toUpdate.position ||
+      typeof toUpdate.experience !== "number" ||
+      toUpdate.experience < 0
+    ) {
+      return callback(null, {
+        status: 400,
+        message: "Bad Request: All fields must be provided and valid.",
+        candidate: null,
+      });
+    }
 
-  // Check if candidate exists
-  if (index === -1) {
-    callback(null, {
-      message: `❌ Candidate with ID ${updated.id} not found.`, // Return error if not found
+    // Check if candidate exists
+    const existing = await candidatesCollection.findOne({
+      _id: new ObjectId(toUpdate._id),
     });
-    return;
-  }
 
-  // Update the candidate's information
-  candidates[index] = updated;
-  console.log(
-    `✏️ Candidate ${updated.name} with ID ${updated.id} updated successfully.` // Log successful update
-  );
-  callback(null, {
-    message: `Candidate ${updated.name} updated successfully.`, // Send success message to client
-  });
+    if (!existing) {
+      return callback(null, {
+        status: 404,
+        message: `Not Found: Candidate with ID ${toUpdate._id} does not exist.`,
+        candidate: null,
+      });
+    }
+
+    const updateFields = {
+      name: toUpdate.name,
+      email: toUpdate.email,
+      position: toUpdate.position,
+      experience: toUpdate.experience,
+    };
+
+    if (toUpdate.pathCV) {
+      updateFields.pathCV = toUpdate.pathCV;
+    }
+
+    const result = await candidatesCollection.updateOne(
+      { _id: new ObjectId(toUpdate._id) },
+      { $set: updateFields }
+    );
+
+    const updated = await candidatesCollection.findOne({
+      _id: new ObjectId(toUpdate._id),
+    });
+
+    if (result.status === 200) {
+      console.log(
+        `✏️ Candidate ${updated.name} with ID ${updated._id} updated successfully.`
+      );
+    } else {
+      console.log(` Candidate ${updated.name} was not updated successfully.`);
+    }
+
+    // Respond with success
+    callback(null, {
+      status: 200,
+      message: `Candidate ${updated.name} updated successfully.`,
+      candidate: updated,
+    });
+  } catch (err) {
+    console.error("❌ DB Update Error:", err.message);
+    callback(null, {
+      status: 500,
+      message: "Internal Server Error: Unable to update candidate.",
+      candidate: null,
+    });
+  }
 }
 
 // Function to handle deleting a candidate
-function DeleteCandidate(call, callback) {
+async function DeleteCandidate(call, callback) {
   const { id } = call.request;
-  const index = candidates.findIndex((c) => String(c.id) === String(id)); // Find candidate by ID
 
-  // Check if candidate exists
-  if (index === -1) {
-    callback(null, { message: `❌ Candidate with ID ${id} not found.` }); // Return error if not found
-    return;
+  try {
+    const objectId = new ObjectId(id);
+
+    const candidate = await candidatesCollection.findOne({ _id: objectId });
+    const result = await candidatesCollection.deleteOne({ _id: objectId });
+
+    if (result.deletedCount === 0) {
+      return callback(null, {
+        message: `Candidate with ID ${id} not found.`,
+        id: id,
+      });
+    }
+
+    const name = candidate?.name || "(unknown)";
+    console.log(`🗑️ Deleted candidate ${name} from candidates collection.`);
+
+    callback(null, {
+      message: `Candidate ${name} deleted successfully.`,
+      id: candidate._id.toString(),
+    });
+  } catch (error) {
+    console.error("❌ Error deleting candidate:", error.message);
+    callback({
+      code: grpc.status.INTERNAL,
+      message: "Server error while deleting candidate.",
+    });
   }
-
-  // Remove the candidate from the list
-  const [removed] = candidates.splice(index, 1);
-  console.log(
-    `🗑️  Candidate ${removed.name} (ID: ${removed.id}) deleted successfully.` // Log successful deletion
-  );
-  callback(null, {
-    message: `Candidate ${removed.name} with ID ${removed.id}  deleted successfully.`, // Send success message to client
-  });
 }
 
 // Create a new gRPC server instance
@@ -95,37 +258,33 @@ const PORT = process.env.HIRING_PORT || 50051; // Default to port 50051 if not s
 const HOST = "localhost";
 
 // Bind the server to the specified address and port
-server.bindAsync(
-  `0.0.0.0:${PORT}`,
-  grpc.ServerCredentials.createInsecure(),
-  () => {
-    console.log(`🚀 HiringService running on port ${PORT}`); // Log server start
+connectDB()
+  .then(() => {
+    server.bindAsync(
+      `0.0.0.0:${PORT}`,
+      grpc.ServerCredentials.createInsecure(),
+      () => {
+        console.log(`🚀 HiringService running on port ${PORT}`);
 
-    // 📡 Register this service with the service discovery system
-    fetch("http://localhost:3001/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        serviceName: "HiringService", // The name of the service being registered
-        host: HOST, // The host address of the service
-        port: PORT, // The port the service is running on
-      }),
-    })
-      .then((res) => {
-        // Check if the response status is in the 2xx range (successful request)
-        if (!res.ok) {
-          // If the response is not successful, throw an error with the status text
-          throw new Error(`Discovery registration failed: ${res.statusText}`);
-        }
-        return res.json(); // If successful, parse the response as JSON
-      })
-      .then((data) => {
-        // Log the response from the discovery service (successful registration)
-        console.log("📡 Registered with discovery:", data);
-      })
-      .catch((err) => {
-        // Log any error that occurred during the registration process
-        console.error("❌ Discovery registration failed:", err);
-      });
-  }
-);
+        // Register with service discovery
+        fetch("http://localhost:3001/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            serviceName: "HiringService",
+            host: HOST,
+            port: PORT,
+          }),
+        })
+          .then((res) => res.json())
+          .then((data) => console.log("📡 Registered with discovery:", data))
+          .catch((err) =>
+            console.error("❌ Discovery registration failed:", err)
+          );
+      }
+    );
+  })
+  .catch((err) => {
+    console.error("❌ Failed to connect to MongoDB:", err);
+    process.exit(1); // Exit if DB connection fails
+  });

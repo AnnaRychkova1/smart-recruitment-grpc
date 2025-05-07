@@ -11,7 +11,21 @@ const openai = new OpenAI({
 
 export async function analyzeCVWithAI(cvText, position) {
   // Create the prompt for OpenAI, asking to evaluate the CV
-  const prompt = `Evaluate this resume for the position "${position}". Does the candidate meet the typical requirements? Answer with "yes" or "no".\n\n${cvText}`;
+  const prompt = `You are an AI assistant helping filter job applicants. 
+
+  Given the following resume text, determine:
+  1. Is this a real, structured CV or just a placeholder, incomplete text, or irrelevant content?
+  2. If the position is specified, does the candidate meet general expectations for this role (e.g. experience, skills)?
+  
+  Position: "${position || "Any"}"
+  
+  Resume:
+  ${cvText}
+  
+  Please answer only:
+  - "yes" if it's a real CV and matches the position (if specified),
+  - "no" otherwise.
+  `;
 
   console.log("🟡 Prompt being sent to OpenAI:");
 

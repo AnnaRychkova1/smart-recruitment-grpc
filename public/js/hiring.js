@@ -28,6 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Handle candidate edit form submission
   const editForm = document.getElementById("edit-form");
+
   if (editForm) {
     editForm.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -41,28 +42,37 @@ async function toggleCandidateList() {
   const btn = document.getElementById("show-list-btn");
   const list = document.getElementById("candidate-list");
 
+  if (!btn || !list) return;
+
   // Hide list if already visible
   if (candidatesVisible) {
     list.innerHTML = "";
-    btn.textContent = "Show All Candidates";
+    btn.textContent = "👀 Show All Candidates";
     candidatesVisible = false;
     return;
   }
 
   try {
-    const response = await fetch("/candidates");
+    const response = await fetch("/get-candidates");
     if (!response.ok) throw new Error();
 
     const { candidates } = await response.json();
     list.innerHTML = "";
 
+    const message = document.createElement("p");
+    message.innerHTML = `<strong class="message-result">✅ You have ${candidates.length} candidates.</strong>`;
+    list.appendChild(message);
+
     // Show fallback if no candidates found
     if (candidates.length === 0) {
-      list.innerHTML = "<li>No candidates available.</li>";
+      const noResult = document.createElement("li");
+      noResult.textContent = "No candidates available.";
+      list.appendChild(noResult);
     } else {
       // Render each candidate with edit and delete buttons
       candidates.forEach((candidate) => {
         const li = document.createElement("li");
+        li.setAttribute("data-id", candidate.id);
         li.innerHTML = `
           <strong>Name:</strong> ${candidate.name}<br />
           <strong>Email:</strong> ${candidate.email}<br />
@@ -73,11 +83,13 @@ async function toggleCandidateList() {
 
         const editBtn = document.createElement("button");
         editBtn.textContent = "✏️ Edit";
+        editBtn.classList.add("action-btn");
         editBtn.onclick = () => openEditModal(candidate);
 
         const deleteBtn = document.createElement("button");
         deleteBtn.textContent = "🗑️ Delete";
-        deleteBtn.onclick = () => deleteCandidate(candidate.id);
+        deleteBtn.classList.add("action-btn");
+        deleteBtn.onclick = () => deleteCandidate(candidate._id);
 
         li.appendChild(editBtn);
         li.appendChild(deleteBtn);
@@ -85,7 +97,7 @@ async function toggleCandidateList() {
       });
     }
 
-    btn.textContent = "Hide Candidates";
+    btn.textContent = "🙈 Hide Candidates";
     candidatesVisible = true;
   } catch (err) {
     console.error("Error fetching candidates:", err);
@@ -97,10 +109,70 @@ async function toggleCandidateList() {
 async function submitCandidateForm() {
   const form = document.getElementById("hiring-form");
   const formModal = document.getElementById("form-modal");
-  const resultModal = document.getElementById("result-modal");
+
+  const nameInput = document.getElementById("name");
+  const emailInput = document.getElementById("email");
+  const positionInput = document.getElementById("position");
+  const experienceInput = document.getElementById("experience");
+  const cvInput = document.getElementById("pathCV");
+
+  let isFormValid = true;
+
+  // Check if the fields are filled and valid
+  if (
+    !nameInput.value ||
+    !emailInput.value ||
+    !positionInput.value ||
+    experienceInput.value < 0
+  ) {
+    isFormValid = false;
+  }
+
+  // Function to create error messages
+  function createErrorMessage(message) {
+    const errorMessage = document.createElement("div");
+    errorMessage.classList.add("error-message");
+    errorMessage.style.color = "red";
+    errorMessage.style.padding = "5px";
+    errorMessage.style.backgroundColor = "#fdd";
+    errorMessage.textContent = message;
+    return errorMessage;
+  }
+
+  // Function to remove any existing error message
+  function removeErrorMessage(inputElement) {
+    const existingError =
+      inputElement.parentElement.querySelector(".error-message");
+    if (existingError) {
+      existingError.remove(); // Remove the existing error message
+    }
+  }
+
+  // Check if CV input is empty or has the wrong extension
+  if (!cvInput.files.length) {
+    removeErrorMessage(cvInput);
+    isFormValid = false;
+  } else {
+    const file = cvInput.files[0]; // Get the first file from the input (if it exists)
+    if (file) {
+      // Check for PDF file extension
+      const fileExtension = file.name.split(".").pop().toLowerCase(); // Get the file extension
+      if (fileExtension !== "pdf") {
+        isFormValid = false;
+        removeErrorMessage(cvInput);
+        const errorMessage = createErrorMessage(
+          "⚠️ Only PDF files are allowed."
+        );
+        cvInput.parentElement.appendChild(errorMessage); // Add new error message
+      }
+    }
+  }
+
+  if (!isFormValid) {
+    return;
+  }
 
   const formData = new FormData(form);
-  formData.append("id", Date.now().toString()); // Assign a unique ID based on timestamp
 
   try {
     const response = await fetch("/add-candidate", {
@@ -109,31 +181,46 @@ async function submitCandidateForm() {
     });
     const result = await response.json();
 
-    if (!response.ok) throw new Error();
-    alert(`🗑️ ${result.message || "Something went wrong"}`);
+    if (!response.ok || result.status !== 201) {
+      alert(`❌ Error ${result.status}: ${result.message}`);
+      return;
+    }
+    alert(`${result.message}`);
+    if (candidatesVisible) {
+      await toggleCandidateList();
+    }
   } catch {
-    resultMessage.innerText = "❌ Failed to add candidate.";
+    alert(
+      "⚠️ A connection error occurred. The candidate may have been added. Please check the candidate list."
+    );
   }
 
   closeModal(formModal);
-  openModal(resultModal);
 }
 
 // Delete candidate by ID
-async function deleteCandidate(id) {
+async function deleteCandidate(_id) {
   if (!confirm("Are you sure you want to delete this candidate?")) return;
 
   try {
-    const response = await fetch(`/delete-candidate/${id}`, {
+    const response = await fetch(`/delete-candidate/${_id}`, {
       method: "DELETE",
     });
 
-    const result = await response.json();
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Server error: ${response.status} - ${errorText}`);
+    }
 
-    if (!response.ok) throw new Error();
-    alert("🗑️ Candidate deleted.");
+    let result;
+    try {
+      result = await response.json();
+    } catch (jsonErr) {
+      throw new Error("Failed to parse server response as JSON.");
+    }
 
-    toggleCandidateList(); // Refresh the list
+    alert(result.message);
+    await toggleCandidateList(); // Refresh the list
   } catch (err) {
     console.error("Error deleting candidate:", err);
     alert("❌ Failed to delete candidate.");
@@ -145,7 +232,6 @@ function openEditModal(candidate) {
   const editModal = document.getElementById("edit-candidate-modal");
   const editForm = document.getElementById("edit-form");
 
-  const idInput = document.getElementById("edit-id");
   const nameInput = document.getElementById("edit-name");
   const emailInput = document.getElementById("edit-email");
   const positionInput = document.getElementById("edit-position");
@@ -153,15 +239,7 @@ function openEditModal(candidate) {
   const cvInput = document.getElementById("edit-pathCV");
 
   // Ensure all required fields exist
-  if (
-    idInput &&
-    nameInput &&
-    emailInput &&
-    positionInput &&
-    experienceInput &&
-    cvInput
-  ) {
-    idInput.value = candidate.id;
+  if (nameInput && emailInput && positionInput && experienceInput && cvInput) {
     nameInput.value = candidate.name;
     emailInput.value = candidate.email;
     positionInput.value = candidate.position;
@@ -173,32 +251,44 @@ function openEditModal(candidate) {
       existingPathCVInput.value = candidate.pathCV;
     }
 
+    editForm.setAttribute("data-id", candidate._id);
+
     openModal(editModal);
   } else {
-    console.error("Some form elements are missing or not properly loaded.");
+    console.error("❌ Some form elements are missing or not properly loaded.");
   }
 }
 
-// Submit updated candidate data to server
 async function updateCandidate() {
   const editForm = document.getElementById("edit-form");
   const editModal = document.getElementById("edit-candidate-modal");
-
-  const candidateId = document.getElementById("edit-id").value;
   const formData = new FormData(editForm);
+  const candidateId = editForm.getAttribute("data-id");
 
   try {
-    const response = await fetch("/edit-candidate/", {
+    const response = await fetch(`/update-candidate/${candidateId}`, {
       method: "PUT",
       body: formData,
     });
+
     const result = await response.json();
 
-    if (!response.ok) throw new Error();
-    alert("✅ Candidate updated successfully.");
-    toggleCandidateList(); // Refresh the list
+    if (response.status === 200) {
+      // alert(`✅ Candidate ${result.candidate.name} updated successfully.`);
+      alert(`✅ ${result.message}`);
+
+      await toggleCandidateList(); // Refresh the list to reflect changes
+    } else if (response.status === 400) {
+      alert("⚠️ Invalid data: " + result.message);
+    } else if (response.status === 404) {
+      alert("❌ Candidate not found: " + result.message);
+    } else if (response.status === 500) {
+      alert("❌ Server error: " + result.message);
+    } else {
+      alert("❌ Unknown error: " + (result.message || "No details."));
+    }
   } catch (err) {
-    console.error("Error updating candidate:", err);
+    console.error("❌ Error updating candidate:", err);
     alert("❌ Failed to update candidate.");
   }
 

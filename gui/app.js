@@ -1,16 +1,11 @@
 // app.js
-
 import express from "express";
-import grpc from "@grpc/grpc-js";
-import protoLoader from "@grpc/proto-loader";
 import path from "path";
 import dotenv from "dotenv";
 import multer from "multer";
-import fetch from "node-fetch";
+import { getGrpcClient } from "../utils/getGrpcClient.js";
 
 dotenv.config();
-const grpcClients = {};
-const loadedProtos = {};
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -34,78 +29,6 @@ app.use(express.static(path.join(process.cwd(), "public")));
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
-async function getGrpcClient(
-  serviceName,
-  protoFile,
-  packageName,
-  grpcServiceName
-) {
-  if (grpcClients[serviceName]) {
-    return grpcClients[serviceName];
-  }
-
-  console.log(`🔍 Looking up "${serviceName}" from discovery...`);
-
-  async function fetchServiceInfo() {
-    try {
-      const res = await fetch(`http://localhost:3001/services/${serviceName}`);
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (err) {
-      console.error("❌ Failed to fetch service info:", err);
-      return null;
-    }
-  }
-
-  const serviceInfo = await fetchServiceInfo();
-
-  if (!serviceInfo) {
-    console.error(`❌ Service "${serviceName}" not found in registry.`);
-    return null;
-  }
-
-  const { host, port } = serviceInfo;
-  if (!host || !port) {
-    console.warn(`⚠️ Invalid service info for "${serviceName}".`);
-    return null;
-  }
-
-  const cacheKey = `${protoFile}-${packageName}`;
-  let proto;
-
-  if (loadedProtos[cacheKey]) {
-    proto = loadedProtos[cacheKey];
-  } else {
-    const protoPath = path.join(process.cwd(), "proto", protoFile);
-    const packageDef = protoLoader.loadSync(protoPath, {
-      keepCase: true,
-      longs: String,
-      enums: String,
-      defaults: true,
-      oneofs: true,
-    });
-    proto = grpc.loadPackageDefinition(packageDef);
-    loadedProtos[cacheKey] = proto;
-  }
-
-  const Service = proto[packageName]?.[grpcServiceName];
-  if (!Service) {
-    console.error(
-      `❌ gRPC service "${grpcServiceName}" not found in package "${packageName}".`
-    );
-    return null;
-  }
-
-  const client = new Service(
-    `${host}:${port}`,
-    grpc.credentials.createInsecure()
-  );
-  grpcClients[serviceName] = client;
-
-  console.log(`✅ Connected to "${serviceName}" at ${host}:${port}`);
-  return client;
-}
-
 // 🔁 Add candidate (HiringService)
 app.post("/add-candidate", upload.single("pathCV"), async (req, res) => {
   console.log("[client:hiring] 🟡 Starting to add a candidate...");
@@ -122,11 +45,10 @@ app.post("/add-candidate", upload.single("pathCV"), async (req, res) => {
       return res.status(500).json({ message: "HiringService not available" });
     }
 
-    const { id, name, email, position, experience } = req.body;
+    const { name, email, position, experience } = req.body;
     const pathCV = req.file?.path || "";
 
     console.log("[client:hiring] 🟡 Received data to add candidate:", {
-      id,
       name,
       email,
       position,
@@ -137,7 +59,6 @@ app.post("/add-candidate", upload.single("pathCV"), async (req, res) => {
     //  gRPC
     client.AddCandidate(
       {
-        id,
         name,
         email,
         position,
@@ -149,23 +70,34 @@ app.post("/add-candidate", upload.single("pathCV"), async (req, res) => {
           console.error("[client:hiring] ❌ gRPC AddCandidate error:", err);
           return res.status(500).json({ message: "Failed to add candidate" });
         }
+        if (!response || !response.candidate) {
+          console.warn("[client:hiring] ⚠️ gRPC returned no candidate.");
+          return res.status(502).json({
+            message: "No candidate data received from service.",
+          });
+        }
 
         console.log(
           "[client:hiring] 🟢 Candidate added successfully:",
-          response
+          response.candidate
         );
-        return res.json({ message: response.message });
+        return res.json({
+          status: response.status,
+          message: response.message,
+          candidate: response.candidate,
+        });
       }
     );
   } catch (err) {
-    console.error("[client:hiring] ❌ Unexpected error:", err);
+    console.error("[client:hiring] ❌ Unexpected error:", err.message);
     return res.status(500).json({ message: "Unexpected server error" });
   }
 });
 
 // 📥 Get candidates (HiringService)
-app.get("/candidates", async (req, res) => {
+app.get("/get-candidates", async (req, res) => {
   console.log("[client:hiring] 🟡 Fetching all candidates...");
+
   try {
     const client = await getGrpcClient(
       "HiringService",
@@ -173,8 +105,9 @@ app.get("/candidates", async (req, res) => {
       "hiring",
       "HiringService"
     );
+
     if (!client) {
-      console.error("[client:hiring] ❌ HiringService client is not available");
+      console.error("[client:hiring] ❌ HiringService client unavailable");
       return res.status(500).json({ message: "HiringService not available" });
     }
 
@@ -183,29 +116,36 @@ app.get("/candidates", async (req, res) => {
 
     call.on("data", (candidate) => {
       candidates.push(candidate);
-      console.log("[client:hiring] 🟡 Received candidate:", candidate); // Logging each received candidate
     });
 
     call.on("end", () => {
       console.log(
-        "[client:hiring] 🟢 All candidates fetched successfully. Total candidates:",
+        "[client:hiring] ✅ Stream ended. Candidates received:",
         candidates.length
       );
-      res.json({ candidates });
+      return res.status(200).json({
+        message: candidates.length
+          ? "Candidates fetched successfully."
+          : "No candidates found.",
+        candidates,
+      });
     });
 
     call.on("error", (err) => {
-      console.error("[client:hiring] ❌ Error fetching candidates:", err);
-      res.status(500).json({ message: "Failed to get candidates" });
+      console.error("[client:hiring] ❌ Stream error:", err.message);
+      return res.status(500).json({
+        message: "Failed to get candidates from gRPC service.",
+        error: err.message,
+      });
     });
   } catch (err) {
-    console.error("[client:hiring] ❌ Unexpected error:", err);
+    console.error("[client:hiring] ❌ Unexpected error:", err.message);
     return res.status(500).json({ message: "Unexpected server error" });
   }
 });
 
 // ✏️ Edit candidate
-app.put("/edit-candidate", upload.single("pathCV"), async (req, res) => {
+app.put("/update-candidate/:id", upload.single("pathCV"), async (req, res) => {
   console.log("[client:hiring] 🟡 Starting to edit a candidate...");
 
   try {
@@ -215,49 +155,66 @@ app.put("/edit-candidate", upload.single("pathCV"), async (req, res) => {
       "hiring",
       "HiringService"
     );
+
     if (!client) {
       console.error("[client:hiring] ❌ HiringService client is not available");
       return res.status(500).json({ message: "HiringService not available" });
     }
 
-    const { id, name, email, position, experience, existingPathCV } = req.body;
+    const { name, email, position, experience, existingPathCV } = req.body;
     const pathCV = req.file?.path || existingPathCV || "";
+    const _id = req.params.id;
 
-    console.log("[client:hiring] 🟡 Received data to update candidate:", {
-      id,
+    const payload = {
+      _id,
       name,
       email,
       position,
       experience: parseInt(experience),
       pathCV,
-    });
+    };
 
-    client.UpdateCandidate(
-      {
-        id,
-        name,
-        email,
-        position,
-        experience: parseInt(experience),
-        pathCV,
-      },
-      (err, response) => {
-        if (err) {
-          console.error("[client:hiring] ❌ gRPC UpdateCandidate error:", err);
+    console.log("[client:hiring] 🟡 Sending update payload:", payload);
+
+    client.UpdateCandidate(payload, (err, response) => {
+      if (err) {
+        console.error(
+          "[client:hiring] ❌ gRPC UpdateCandidate error:",
+          err.message
+        );
+        return res.status(500).json({ message: "Failed to update candidate" });
+      }
+
+      if (!response) {
+        console.warn(
+          "[client:hiring] ⚠️ No response from gRPC UpdateCandidate."
+        );
+        return res
+          .status(502)
+          .json({ message: "No response from hiring service" });
+      }
+
+      console.log("[client:hiring] 🟢 UpdateCandidate response:", response);
+
+      // Map gRPC status to HTTP status
+      switch (response.status) {
+        case 400:
+          return res.status(400).json({ message: response.message });
+        case 404:
+          return res.status(404).json({ message: response.message });
+        case 200:
+          return res.status(200).json({
+            message: response.message,
+            candidate: response.candidate,
+          });
+        default:
           return res
             .status(500)
-            .json({ message: "Failed to update candidate" });
-        }
-
-        console.log(
-          "[client:hiring] 🟢 Candidate updated successfully:",
-          response
-        );
-        return res.json({ message: response.message });
+            .json({ message: "Unexpected response status" });
       }
-    );
+    });
   } catch (err) {
-    console.error("[client:hiring] ❌ Unexpected error:", err);
+    console.error("[client:hiring] ❌ Unexpected error:", err.message);
     return res.status(500).json({ message: "Unexpected server error" });
   }
 });
@@ -273,6 +230,7 @@ app.delete("/delete-candidate/:id", async (req, res) => {
       "hiring",
       "HiringService"
     );
+
     if (!client) {
       console.error("[client:hiring] ❌ HiringService client is not available");
       return res.status(500).json({ message: "HiringService not available" });
@@ -280,19 +238,27 @@ app.delete("/delete-candidate/:id", async (req, res) => {
 
     const { id } = req.params;
 
+    if (!id) {
+      return res.status(400).json({ message: "Candidate ID is required" });
+    }
+
     console.log("[client:hiring] 🟡 Request to delete candidate with ID:", id);
 
     client.DeleteCandidate({ id }, (err, response) => {
       if (err) {
-        console.error("[client:hiring] ❌ gRPC DeleteCandidate error:", err);
-        return res.status(500).json({ message: "Failed to delete candidate" });
+        console.error(
+          "[client:hiring] ❌ gRPC DeleteCandidate error:",
+          err.message
+        );
       }
 
       console.log(
         "[client:hiring] 🟢 Candidate deleted successfully:",
         response
       );
-      return res.json({ message: response.message });
+      return res
+        .status(200)
+        .json({ message: response.message, id: response.id });
     });
   } catch (err) {
     console.error("[client:hiring] ❌ Unexpected error:", err);
@@ -311,6 +277,7 @@ app.get("/filter-candidates", async (req, res) => {
       "filtering",
       "FilteringService"
     );
+
     if (!client) {
       console.error(
         "[client:filtering] ❌ FilteringService client is not available"
@@ -320,14 +287,17 @@ app.get("/filter-candidates", async (req, res) => {
         .json({ message: "FilteringService not available" });
     }
 
+    // Parse and sanitize query parameters
     const {
-      position,
+      position = "", // default: any position
       minExperience: rawMinExp,
       maxExperience: rawMaxExp,
     } = req.query;
 
-    const minExperience = Number(rawMinExp);
-    const maxExperience = Number(rawMaxExp);
+    const minExperience = isNaN(Number(rawMinExp)) ? 0 : Number(rawMinExp);
+    const maxExperience = isNaN(Number(rawMaxExp))
+      ? Infinity
+      : Number(rawMaxExp);
 
     console.log("[client:filtering] 🟡 Received filter parameters:", {
       position,
@@ -335,20 +305,20 @@ app.get("/filter-candidates", async (req, res) => {
       maxExperience,
     });
 
+    const filtered = [];
+
     const call = client.FilterCandidates({
       minExperience,
       maxExperience,
       position,
     });
 
-    const filtered = [];
-
     call.on("data", (candidate) => {
-      filtered.push(candidate);
       console.log(
         "[client:filtering] 🟡 Matching candidate received:",
         candidate
       );
+      filtered.push(candidate);
     });
 
     call.on("end", () => {
@@ -398,7 +368,10 @@ app.delete("/delete-filtered/:id", async (req, res) => {
 
     client.DeleteCandidate({ id }, (err, response) => {
       if (err) {
-        console.error("[client:filtering] ❌ gRPC DeleteCandidate error:", err);
+        console.error(
+          "[client:filtering] ❌ gRPC DeleteCandidate error:",
+          err.message
+        );
         return res.status(500).json({ message: "Failed to delete candidate" });
       }
 
@@ -409,6 +382,7 @@ app.delete("/delete-filtered/:id", async (req, res) => {
 
       return res.json({
         message: response.message,
+        id: response.id,
       });
     });
   } catch (err) {
@@ -432,19 +406,18 @@ app.post("/schedule-interviews", async (req, res) => {
     return res.status(500).json({ message: "InterviewService unavailable" });
   }
 
-  const { date, candidates } = req.body;
+  const { date } = req.body;
 
   console.log("[client:interview] 🟡 Received scheduling data:", {
     date,
-    candidates,
   });
 
-  if (!Array.isArray(candidates) || !date) {
+  if (!date) {
     console.error("[client:interview] ❌ Invalid input data for scheduling");
     return res.status(400).json({ message: "Invalid input" });
   }
 
-  client.ScheduleInterviews({ date, candidates }, (err, response) => {
+  client.ScheduleInterviews({ date }, (err, response) => {
     if (err) {
       console.error(
         "[client:interview] ❌ gRPC ScheduleInterviews error:",
@@ -465,79 +438,102 @@ app.post("/schedule-interviews", async (req, res) => {
 });
 
 // ✏️ Edit interview
-app.put("/edit-interview", async (req, res) => {
-  console.log("[client:interview] 🟡 Starting to edit an interview...");
+app.put("/update-interview/:id", async (req, res) => {
+  console.log("[client:interview] 🟡 Updating interview...");
 
-  const client = await getGrpcClient(
-    "InterviewService",
-    "interview.proto",
-    "interview",
-    "InterviewService"
-  );
-  if (!client) {
-    console.error("[client:interview] ❌ InterviewService unavailable");
-    return res.status(500).json({ message: "InterviewService unavailable" });
-  }
+  try {
+    const client = await getGrpcClient(
+      "InterviewService",
+      "interview.proto",
+      "interview",
+      "InterviewService"
+    );
 
-  const { id, new_date, new_time } = req.body;
-
-  console.log("[client:interview] 🟡 Editing interview with data:", {
-    id,
-    new_date,
-    new_time,
-  });
-
-  client.EditInterview({ id, new_date, new_time }, (err, response) => {
-    if (err) {
-      console.error("[client:interview] ❌ gRPC EditInterview error:", err);
-      return res.status(500).json({ message: "Failed to edit interview" });
+    if (!client) {
+      console.error("[client:interview] ❌ InterviewService unavailable");
+      return res.status(500).json({ message: "InterviewService unavailable" });
     }
 
-    console.log(
-      "[client:interview] 🟢 Interview edited successfully:",
-      response.message
-    );
-    return res.json({
-      message: response.message,
-      updated: response.updated,
+    const { id } = req.params;
+    const { new_date, new_time } = req.body;
+
+    if (!new_date || !new_time) {
+      return res.status(400).json({ message: "Missing date or time" });
+    }
+
+    const payload = { id, new_date, new_time };
+    console.log("[client:interview] 🟡 Payload:", payload);
+
+    client.UpdateInterview(payload, (err, response) => {
+      if (err) {
+        console.error(
+          "[client:interview] ❌ gRPC UpdateInterview error:",
+          err.message
+        );
+        return res.status(500).json({ message: "Failed to update interview" });
+      }
+
+      if (!response || !response.updated) {
+        return res.status(502).json({ message: "No interview data returned" });
+      }
+
+      console.log("[client:interview] 🟢 Interview updated:", response.updated);
+      return res.status(200).json({
+        message: response.message,
+        interview: response.updated,
+      });
     });
-  });
+  } catch (err) {
+    console.error("[client:interview] ❌ Unexpected error:", err.message);
+    res.status(500).json({ message: "Unexpected server error" });
+  }
 });
 
 // 🗑️ Delete interview
 app.delete("/delete-interview/:id", async (req, res) => {
-  const { id } = req.params;
-  console.log(
-    "[client:interview] 🟡 Starting to delete interview with ID:",
-    id
-  );
+  console.log("[client:interview] 🟡 Deleting interview...");
 
-  const client = await getGrpcClient(
-    "InterviewService",
-    "interview.proto",
-    "interview",
-    "InterviewService"
-  );
-  if (!client) {
-    console.error("[client:interview] ❌ InterviewService unavailable");
-    return res.status(500).json({ message: "InterviewService unavailable" });
-  }
+  try {
+    const client = await getGrpcClient(
+      "InterviewService",
+      "interview.proto",
+      "interview",
+      "InterviewService"
+    );
 
-  client.DeleteInterview({ id }, (err, response) => {
-    if (err) {
-      console.error("[client:interview] ❌ gRPC DeleteInterview error:", err);
-      return res.status(500).json({ message: "Failed to delete interview" });
+    if (!client) {
+      console.error("[client:interview] ❌ InterviewService unavailable");
+      return res.status(500).json({ message: "InterviewService unavailable" });
     }
 
-    console.log(
-      "[client:interview] 🟢 Interview deleted successfully:",
-      response
-    );
-    return res.json({
-      message: response.message,
-      id: response.id,
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ message: "Interview ID is required" });
+    }
+
+    client.DeleteInterview({ id }, (err, response) => {
+      if (err) {
+        console.error("[client:interview] ❌ gRPC DeleteInterview error:", err);
+        return res.status(500).json({ message: "Failed to delete interview" });
+      }
+
+      if (!response || !response.id) {
+        return res
+          .status(404)
+          .json({ message: "Interview not found or not deleted" });
+      }
+      console.log("[client:interview] 🟢 Interview deleted:", response);
+      console.log("[client:interview] 🟢 Interview deleted:", response.id);
+      return res.status(200).json({
+        message: response.message,
+        id: response.id,
+      });
     });
-  });
+  } catch (err) {
+    console.error("[client:interview] ❌ Unexpected error:", err);
+    res.status(500).json({ message: "Unexpected server error" });
+  }
 });
 
 app.get("/", (req, res) => {

@@ -1,27 +1,33 @@
-let scheduledInterviews = [];
-
 document.addEventListener("DOMContentLoaded", () => {
+  // Handle click on the "Schedule Interview" button
   const scheduleBtn = document.getElementById("schedule-btn");
   if (scheduleBtn) {
     scheduleBtn.addEventListener("click", scheduleInterview);
   }
 
+  // Handle the form submission for editing an interview
   const editForm = document.getElementById("edit-interview-form");
   if (editForm) {
     editForm.addEventListener("submit", saveEditInterview);
   }
 });
 
-// 🟢 Schedule interviews
+// 🟢 Schedule an interview
 async function scheduleInterview() {
+  const interviewBox = document.getElementById("interview-container");
+  const interviewSection = document.getElementById("interview-section");
+  const interviewTitle = document.getElementById("interview-title");
+  const showFormFilterBtn = document.getElementById("show-form-filter-btn");
+  const showFilteredCandidates = document.getElementById(
+    "show-filtered-candidates"
+  );
+  const filterSection = document.getElementById("filter-section");
+  const addSection = document.getElementById("add-section");
   const dateInput = document.getElementById("interview-date");
   const messageBox = document.getElementById("schedule-message");
-  const tableBody = document.getElementById("schedule-body");
   const selectedDate = dateInput.value;
 
   if (!selectedDate) return alert("📅 Please select a date first.");
-  if (latestFilteredCandidates.length === 0)
-    return alert("⚠️ Please filter candidates first.");
 
   try {
     const response = await fetch("/schedule-interviews", {
@@ -29,104 +35,131 @@ async function scheduleInterview() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         date: selectedDate,
-        candidates: latestFilteredCandidates.map((c) => ({
-          id: c.id,
-          name: c.name,
-        })),
       }),
     });
 
     const result = await response.json();
-    if (!response.ok) throw new Error();
 
+    const scheduled = result.scheduled;
+
+    const tableBody = document.getElementById("schedule-body");
+    tableBody.innerHTML = "";
+
+    if (scheduled.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="4">No scheduled interviews.</td></tr>`;
+      return;
+    }
+    filterSection.style.display = "none";
+    scheduled.forEach((entry) => {
+      const row = document.createElement("tr");
+      row.setAttribute("data-id", entry._id);
+      row.innerHTML = `
+        <td>${entry.name}</td>
+        <td>${entry.date}</td>
+        <td>${entry.time}</td>
+        <td>
+          <button class="action-btn" onclick='editInterview(${JSON.stringify(
+            entry
+          )})'>✏️ Edit</button>
+          <button class="action-btn" onclick="deleteInterview('${
+            entry._id
+          }')">🗑️ Delete</button>
+        </td>
+      `;
+      tableBody.appendChild(row);
+    });
+    // Create a button asking the user if they want to add or filter more candidates
+    const continueBtn = document.createElement("button");
+    continueBtn.textContent = "➕ Add or Filter More Candidates?";
+    continueBtn.style.marginTop = "20px";
+
+    // When clicked, show the add and filter sections again
+    continueBtn.addEventListener("click", () => {
+      addSection.style.display = "block";
+      filterSection.style.display = "block";
+      interviewBox.style.display = "none";
+      interviewSection.style.display = "none";
+    });
+
+    // Append the button under the interview table
+    const interviewTable = document.getElementById("schedule-table");
+    interviewTable.parentNode.insertBefore(
+      continueBtn,
+      interviewTable.nextSibling
+    );
+    showFormFilterBtn.style.display = "block";
+    showFilteredCandidates.style.display = "none";
+    interviewBox.style.display = "none";
+    interviewTitle.textContent = "📅 Scheduled Interviews";
     alert("✅ Interviews successfully scheduled!");
     messageBox.innerHTML = `<strong>${result.message}</strong>`;
-
-    scheduledInterviews = result.scheduled || [];
-    renderScheduledInterviews();
   } catch (err) {
     console.error("❌ Failed to schedule interviews:", err);
     alert("❌ Scheduling failed.");
   }
 }
 
-// 🟡 Render table
-function renderScheduledInterviews() {
-  const tableBody = document.getElementById("schedule-body");
-  tableBody.innerHTML = "";
+// ✏️ Open the modal for editing an interview
+function editInterview(entry) {
+  const modal = document.getElementById("edit-interview-modal");
 
-  if (scheduledInterviews.length === 0) {
-    tableBody.innerHTML = `<tr><td colspan="4">No scheduled interviews.</td></tr>`;
-    return;
-  }
+  const form = document.getElementById("edit-interview-form");
+  const { _id, name, date, time } = entry;
 
-  scheduledInterviews.forEach((entry) => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${entry.name}</td>
-      <td>${entry.date}</td>
-      <td>${entry.time}</td>
-      <td>
-        <button onclick="editInterview(${entry.id})">✏️ Edit</button>
-        <button onclick="deleteInterview(${entry.id})">🗑️ Delete</button>
-      </td>
-    `;
-    tableBody.appendChild(row);
-  });
+  document.getElementById("edit-interview-id").value = _id;
+  document.getElementById("edit-interview-candidate").value = name;
+  document.getElementById("edit-interview-date").value = date;
+  document.getElementById("edit-interview-time").value = time;
+
+  form.setAttribute("data-id", _id);
+  form.dataset.oldDate = date;
+  form.dataset.oldTime = time;
+
+  openModal(modal); // Open the modal
 }
 
-// ✏️ Edit interview
-function editInterview(id) {
-  const selected = scheduledInterviews.find((item) => item.id === String(id));
-  if (!selected) return alert("❌ Interview not found!");
-
-  document.getElementById("edit-interview-id").value = selected.id;
-  document.getElementById("edit-interview-date").value = selected.date;
-  document.getElementById("edit-interview-time").value = selected.time;
-  document.getElementById("edit-interview-candidate").value = selected.name;
-
-  openModal(document.getElementById("edit-interview-modal"));
-}
-
-// 💾 Save edited interview
+// 💾 Save the edited interview
 async function saveEditInterview(e) {
   e.preventDefault();
 
-  const id = Number(document.getElementById("edit-interview-id").value);
-  const newDate = document.getElementById("edit-interview-date").value;
-  const newTime = document.getElementById("edit-interview-time").value;
+  const form = document.getElementById("edit-interview-form");
+  const modal = document.getElementById("edit-interview-modal");
+
+  const id = form.getAttribute("data-id");
+  const dateInput = document.getElementById("edit-interview-date");
+  const timeInput = document.getElementById("edit-interview-time");
+
+  const newDate = dateInput.value.trim() || form.dataset.oldDate;
+  const newTime = timeInput.value.trim() || form.dataset.oldTime;
+
+  const request = {
+    _id: id,
+    new_date: newDate,
+    new_time: newTime,
+  };
 
   try {
-    const response = await fetch("/edit-interview", {
+    const response = await fetch(`/update-interview/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id,
-        new_date: newDate,
-        new_time: newTime,
-      }),
+      body: JSON.stringify(request),
     });
 
-    const result = await response.json();
-    if (!response.ok) throw new Error();
+    const { message, interview } = await response.json();
 
-    alert(`✅ ${result.message}`);
+    alert(`${message}`);
     closeModal(document.getElementById("edit-interview-modal"));
 
-    // Update from server response
-    const updated = result.updated;
-    scheduledInterviews = scheduledInterviews.map((interview) =>
-      String(interview.id) === String(updated.id) ? updated : interview
-    );
+    // Update only the edited interview in the DOM without reloading the entire table
 
-    renderScheduledInterviews();
+    updateInterviewInDOM(interview);
   } catch (err) {
     console.error("❌ Error editing interview:", err);
     alert("❌ Failed to update interview.");
   }
 }
 
-// 🗑️ Delete interview
+// 🗑️ Delete an interview
 async function deleteInterview(id) {
   if (!confirm("Are you sure you want to delete this interview?")) return;
 
@@ -134,18 +167,59 @@ async function deleteInterview(id) {
     const response = await fetch(`/delete-interview/${id}`, {
       method: "DELETE",
     });
+
     const result = await response.json();
-    if (!response.ok) throw new Error();
+    // if (!response.ok) throw new Error();
 
-    alert("🗑️ Interview deleted.");
+    const toDelete = String(result.id);
 
-    // Remove from request
-    scheduledInterviews = scheduledInterviews.filter(
-      (i) => String(i.id) !== String(result.id)
-    );
-    renderScheduledInterviews();
+    if (result.id) {
+      deleteInterviewFromDom(toDelete);
+      alert("🗑️ Interview deleted.");
+    } else {
+      alert(`${result.message}`);
+    }
   } catch (err) {
     console.error("❌ Error deleting interview:", err);
     alert("❌ Failed to delete interview.");
+  }
+}
+
+// Function to update the interview in the DOM after editing
+function updateInterviewInDOM(updatedInterview) {
+  const row = document.querySelector(
+    `#schedule-body tr[data-id='${updatedInterview._id}']`
+  );
+  if (row) {
+    row.querySelector("td:nth-child(2)").textContent = updatedInterview.date;
+    row.querySelector("td:nth-child(3)").textContent = updatedInterview.time;
+  }
+}
+
+// Function to remove the interview from the DOM after deletion
+function removeInterviewFromDOM(_id) {
+  const row = document.querySelector(`#schedule-body tr[data-id='${_id}']`);
+  if (row) {
+    row.remove();
+  }
+}
+
+function deleteInterviewFromDom(id) {
+  const tableBody = document.getElementById("schedule-body");
+  const row = tableBody.querySelector(`tr[data-id="${id}"]`);
+
+  if (row) {
+    row.remove();
+  }
+
+  const remainingRows = tableBody.querySelectorAll("tr[data-id]");
+
+  const messageBox = document.getElementById("schedule-message");
+  if (messageBox) {
+    messageBox.innerHTML = `<strong>📅 ${remainingRows.length} interviews scheduled.</strong>`;
+  }
+
+  if (remainingRows.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="4">No scheduled interviews.</td></tr>`;
   }
 }

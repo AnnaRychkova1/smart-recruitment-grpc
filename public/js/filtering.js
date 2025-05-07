@@ -1,8 +1,5 @@
 // filtering.js
 
-// Store the latest filtered candidates for further actions like deletion
-let latestFilteredCandidates = [];
-
 document.addEventListener("DOMContentLoaded", () => {
   // Handle submission of the filter form
   const filterForm = document.getElementById("filter-form");
@@ -26,9 +23,13 @@ document.addEventListener("DOMContentLoaded", () => {
  * Sends a filter request to the server and displays the filtered candidates
  */
 async function submitFilterForm() {
+  const filterTitle = document.getElementById("filter-title");
+  const showFilterBtn = document.getElementById("show-form-filter-btn");
+  const addSection = document.getElementById("add-section");
+  const interviewSection = document.getElementById("interview-section");
   const form = document.getElementById("filter-form");
   const modal = document.getElementById("filter-modal");
-  const filteredSection = document.getElementById("show-filtered-candidates");
+  const filteredList = document.getElementById("show-filtered-candidates");
   const list = document.getElementById("filtered-candidate-list");
 
   const formData = new FormData(form);
@@ -44,26 +45,47 @@ async function submitFilterForm() {
 
   try {
     const response = await fetch(`/filter-candidates?${params.toString()}`);
-    const result = await response.json();
 
-    if (!response.ok) throw new Error();
+    const { filtered } = await response.json();
 
-    latestFilteredCandidates = result.filtered;
     list.innerHTML = "";
 
     // Show number of matching candidates
     const message = document.createElement("p");
-    message.innerHTML = `<strong>✅ ${latestFilteredCandidates.length} candidates passed AI filtering.</strong>`;
+    message.innerHTML = `<strong class="message-result">✅ ${filtered.length} candidates passed AI filtering.</strong>`;
     list.appendChild(message);
 
+    const toggleBtn = document.createElement("button");
+    toggleBtn.id = "toggle-candidates-btn";
+    toggleBtn.textContent = "🙈 Hide Candidates";
+    toggleBtn.style.padding = "12px";
+    toggleBtn.style.marginBottom = "16px";
+
+    toggleBtn.addEventListener("click", () => {
+      const items = list.querySelectorAll("li[data-id], li:not(:first-child)");
+      const currentlyVisible =
+        items.length && items[0].style.display !== "none";
+
+      items.forEach((item) => {
+        item.style.display = currentlyVisible ? "none" : "block";
+      });
+
+      toggleBtn.textContent = currentlyVisible
+        ? "👀 Show Candidates"
+        : "🙈 Hide Candidates";
+    });
+
+    list.appendChild(toggleBtn);
+
     // Render filtered candidates or show "no results" message
-    if (latestFilteredCandidates.length === 0) {
+    if (filtered.length === 0) {
       const noResult = document.createElement("li");
       noResult.textContent = "No candidates match the criteria.";
       list.appendChild(noResult);
     } else {
-      latestFilteredCandidates.forEach((candidate) => {
+      filtered.forEach((candidate) => {
         const item = document.createElement("li");
+        item.setAttribute("data-id", candidate._id);
         item.innerHTML = `
           <strong>Name:</strong> ${candidate.name}<br />
           <strong>Email:</strong> ${candidate.email}<br />
@@ -75,14 +97,19 @@ async function submitFilterForm() {
         // Create a delete button for each candidate
         const deleteBtn = document.createElement("button");
         deleteBtn.textContent = "🗑️ Delete";
-        deleteBtn.onclick = () => deleteFilteredCandidate(candidate.id);
+        deleteBtn.classList.add("action-btn");
+        deleteBtn.onclick = () => deleteFilteredCandidate(candidate._id);
         item.appendChild(deleteBtn);
 
         list.appendChild(item);
       });
     }
 
-    filteredSection.style.display = "block";
+    filteredList.style.display = "block";
+    addSection.style.display = "none";
+    interviewSection.style.display = "block";
+    showFilterBtn.style.display = "none";
+    filterTitle.textContent = "🔍 Filtered Candidates";
     closeModal(modal);
   } catch (err) {
     console.error("Error filtering candidates:", err);
@@ -92,53 +119,56 @@ async function submitFilterForm() {
 
 /**
  * Deletes a filtered candidate and updates the filtered list
- * @param {string} id - ID of the candidate to delete
+ * @param {string} _id - ID of the candidate to delete
  */
-async function deleteFilteredCandidate(id) {
+async function deleteFilteredCandidate(_id) {
+  // Confirm deletion before proceeding
   if (!confirm("Are you sure you want to delete this candidate?")) return;
 
   try {
-    const response = await fetch(`/delete-filtered/${id}`, {
+    // Send a DELETE request to the server to delete the candidate
+    const response = await fetch(`/delete-filtered/${_id}`, {
       method: "DELETE",
     });
+
+    // Check if the response status is OK (200)
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Server error: ${response.status} - ${errorText}`);
+    }
+
+    // Try to parse the response as JSON
     const result = await response.json();
 
-    if (!response.ok) throw new Error();
+    // Show server message after the deletion
+    alert(result.message);
 
-    alert(result.message || "🗑️ Candidate deleted.");
-
-    // Remove the deleted candidate from the local list
-    latestFilteredCandidates = latestFilteredCandidates.filter(
-      (c) => c.id !== id
-    );
-
-    // Update the list in the DOM
+    // Update the candidate list in the DOM
     const list = document.getElementById("filtered-candidate-list");
-    list.innerHTML = "";
+    const candidateItem = list.querySelector(`[data-id="${_id}"]`);
 
-    if (latestFilteredCandidates.length === 0) {
+    // Remove the candidate item from the DOM if it exists
+    if (candidateItem) {
+      candidateItem.remove();
+    }
+
+    // Update the number of remaining candidates
+    const candidates = list.querySelectorAll("li[data-id]");
+    const message = document.querySelector("#filtered-candidate-list p");
+
+    // Update the message with the current number of candidates
+    if (message) {
+      message.innerHTML = `<strong>✅ ${candidates.length} candidates passed AI filtering.</strong>`;
+    }
+
+    // If the list is empty, show a "no results" message
+    if (candidates.length === 0) {
       const noResult = document.createElement("li");
       noResult.textContent = "No candidates match the criteria.";
       list.appendChild(noResult);
-    } else {
-      latestFilteredCandidates.forEach((candidate) => {
-        const item = document.createElement("li");
-        item.innerHTML = `
-          <strong>Name:</strong> ${candidate.name}<br />
-          <strong>Email:</strong> ${candidate.email}<br />
-          <strong>Position:</strong> ${candidate.position}<br />
-          <strong>Experience:</strong> ${candidate.experience} years<br />
-          <strong>CV:</strong> <a href="${candidate.pathCV}" target="_blank">Open CV</a><hr />
-        `;
-        const deleteBtn = document.createElement("button");
-        deleteBtn.textContent = "🗑️ Delete";
-        deleteBtn.onclick = () => deleteFilteredCandidate(candidate.id);
-        item.appendChild(deleteBtn);
-        list.appendChild(item);
-      });
     }
   } catch (err) {
     console.error("Error deleting filtered candidate:", err);
-    alert("❌ Failed to delete candidate.");
+    alert(`❌ Failed to delete candidate. Error: ${err.message}`);
   }
 }

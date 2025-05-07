@@ -2,40 +2,37 @@ syntax = "proto3";
 
 package filtering;
 
-// Service definition for filtering and deleting candidates
 service FilteringService {
 
-  // RPC for filtering candidates based on experience and position
-  // The response returns a stream of candidates
+  // gRPC for filtering candidates based on experience and position
   rpc FilterCandidates (FilterRequest) returns (stream Candidate);
 
   // RPC for deleting a candidate
-  rpc DeleteCandidate (DeleteRequest) returns (StatusResponse);
+  rpc DeleteCandidate (DeleteRequest) returns (DeleteResponse);
 }
 
-// Message for filtering candidates by minimum and maximum experience and position
 message FilterRequest {
-  int32 minExperience = 1; // Minimum experience (in years)
-  int32 maxExperience = 2; // Maximum experience (in years)
-  string position = 3; // Position (optional, can be an empty string)
+  int32 minExperience = 1;
+  int32 maxExperience = 2;
+  string position = 3;
 }
 
-// Message for candidate information
 message Candidate {
-  string id = 1; // Unique identifier of the candidate
-  string name = 2; // Name of the candidate
-  string email = 3; // Email of the candidate
-  string position = 4; // Position of the candidate
-  int32 experience = 5; // Experience of the candidate (in years)
-  string pathCV = 6; // Path to the candidate's CV (this can be changed to `bytes` if you want to send the actual file)
+  string _id = 1; 
+  string name = 2; 
+  string email = 3;
+  string position = 4; 
+  int32 experience = 5; 
+  string pathCV = 6;
 }
 
 // Message for the request to delete a candidate
 message DeleteRequest {
-  string id = 1; // ID of the candidate to be deleted
+  string id = 1; 
 }
 
 // Message for the response status of an operation
-message StatusResponse {
-  string message = 1; // Message about the result of the operation (e.g., "Candidate successfully deleted")
+message DeleteResponse {
+  string message = 1;
+  string id = 2;
 }

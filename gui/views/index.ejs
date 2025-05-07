@@ -9,14 +9,16 @@
   </head>
   <body>
     <h1>🧠 Smart Recruitment</h1>
-    <p>
+    <p class="welcoming">
       Welcome to the future of hiring!<br />Streamlining your hiring process
       with smart technology
     </p>
 
     <section id="add-section">
       <h2>📥 Add candidate</h2>
-      <button id="show-form-btn">Add Candidate</button>
+      <div class="button-container">
+        <button id="show-form-btn">Add Candidate</button>
+      </div>
 
       <!-- Add Modal -->
       <div id="form-modal" class="modal">
@@ -41,7 +43,7 @@
               required
             /><br />
 
-            <label for="pathCV">Upload CV:</label>
+            <label for="pathCV">Upload CV (PDF file):</label>
             <input type="file" id="pathCV" name="pathCV" required /><br />
 
             <button type="submit">Submit</button>
@@ -55,7 +57,6 @@
           <span class="close" data-close>&times;</span>
           <h2>Edit Candidate</h2>
           <form id="edit-form" enctype="multipart/form-data">
-            <input type="hidden" id="edit-id" name="id" />
             <label for="edit-name">Name:</label>
             <input type="text" id="edit-name" name="name" required /><br />
 
@@ -87,27 +88,30 @@
       </div>
 
       <h2>🧾 Show All candidates</h2>
-      <button id="show-list-btn">Show All Candidates</button>
+      <div class="button-container">
+        <button id="show-list-btn">Show All Candidates</button>
+      </div>
       <ul id="candidate-list"></ul>
     </section>
 
     <section id="filter-section">
-      <h2>🔍 Filter Candidates</h2>
-      <button id="show-form-filter-btn">Filter Candidates</button>
+      <h2 id="filter-title">🔍 Filter Candidates</h2>
+      <div class="button-container">
+        <button id="show-form-filter-btn">Filter Candidates</button>
+      </div>
 
       <!-- Filter Modal -->
       <div id="filter-modal" class="modal">
         <div class="modal-content">
           <span class="close" data-close>&times;</span>
-          <h2>Filter Candidates</h2>
           <form id="filter-form" enctype="multipart/form-data">
+            <h2 class="form-filter-title">Filter Candidates</h2>
             <label for="minExperience">Minimum Experience:</label>
             <input
               type="number"
               name="minExperience"
               id="minExperience"
               placeholder="Minimum Experience"
-              required
             /><br />
 
             <label for="maxExperience">Maximum Experience:</label>
@@ -116,7 +120,6 @@
               name="maxExperience"
               id="maxExperience"
               placeholder="Maximum Experience"
-              required
             /><br />
 
             <label for="filterPosition">Position:</label>
@@ -126,14 +129,14 @@
               id="filterPosition"
               placeholder="Position (optional)"
             /><br />
-
-            <button type="submit">Apply Filter</button>
+            <div class="button-container">
+              <button type="submit">Apply Filter</button>
+            </div>
           </form>
         </div>
       </div>
 
       <div id="show-filtered-candidates">
-        <h2>Filtered Candidates:</h2>
         <ul id="filtered-candidate-list"></ul>
       </div>
     </section>
@@ -141,11 +144,15 @@
     <hr />
 
     <section id="interview-section">
-      <h2>📅 Schedule Interviews</h2>
-      <label for="interview-date">Interview Date:</label>
-      <input type="date" id="interview-date" required />
-      <br />
-      <button id="schedule-btn">📅 Schedule</button>
+      <h2 id="interview-title">📅 Schedule Interviews</h2>
+      <div id="interview-container">
+        <label for="interview-date">Interview Date:</label>
+        <input type="date" id="interview-date" required />
+        <br />
+        <div class="button-container">
+          <button id="schedule-btn">📅 Schedule</button>
+        </div>
+      </div>
       <div id="schedule-message"></div>
       <table id="schedule-table">
         <thead>
