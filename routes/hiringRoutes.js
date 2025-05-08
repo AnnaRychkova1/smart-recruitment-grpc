@@ -1,9 +1,17 @@
-// import express from "express";
-// import upload from "../middlwares/upload.js";
-// import hiringController from "../controllers/hiringController.js";
+import { Router } from "express";
+import { upload } from "../middlware/uploadMiddleware.js";
+import {
+  addCandidate,
+  getCandidates,
+  updateCandidate,
+  deleteCandidate,
+} from "../controllers/hiringController.js";
 
-// const router = express.Router();
+const router = Router();
 
-// router.post("/", upload.single("pathCV"), hiringController.addCandidate);
+router.post("/add-candidate", upload.single("pathCV"), addCandidate);
+router.get("/get-candidates", getCandidates);
+router.put("/update-candidate/:id", upload.single("pathCV"), updateCandidate);
+router.delete("/delete-candidate/:id", deleteCandidate);
 
-// export default router;
+export default router;

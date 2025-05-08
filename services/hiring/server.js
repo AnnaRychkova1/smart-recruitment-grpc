@@ -2,24 +2,21 @@ import grpc from "@grpc/grpc-js";
 import protoLoader from "@grpc/proto-loader";
 import path from "path";
 import dotenv from "dotenv";
+import mongoose from "mongoose";
 import fetch from "node-fetch";
-import { MongoClient } from "mongodb";
-import { ObjectId } from "mongodb";
+import { Candidate } from "../../models/Candidate.js";
 
 dotenv.config();
 
-const uri = process.env.MONGO_URI;
-const client = new MongoClient(uri);
-
-let db;
-let candidatesCollection;
-
-async function connectDB() {
-  await client.connect();
-  db = client.db("hiring-db");
-  candidatesCollection = db.collection("candidates");
-  console.log("✅ Connected to MongoDB");
-}
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("✅ Connected to MongoDB Atlas");
+  } catch (error) {
+    console.error("❌ MongoDB connection error:", error);
+    throw error;
+  }
+};
 
 // Define the path to the .proto file
 const PROTO_PATH = path.join(process.cwd(), "proto", "hiring.proto");
@@ -84,15 +81,18 @@ async function AddCandidate(call, callback) {
         null
       );
     }
+
     // Add candidate to DB
-    await candidatesCollection.insertOne(candidate);
+    const newCandidate = new Candidate(candidate);
+    await newCandidate.save();
+    // await candidatesCollection.insertOne(candidate);
     console.log(`📥 Candidate ${candidate.name} added to DB`);
 
     // Response
     callback(null, {
       status: 201, // 201 Created
       message: `📥 Candidate ${candidate.name} created successfully.`,
-      candidate: candidate,
+      candidate: newCandidate.toObject(),
     });
   } catch (err) {
     console.error("❌ DB Insert Error:", err.message);
@@ -100,7 +100,6 @@ async function AddCandidate(call, callback) {
       status: 500,
       message: "Internal Server Error: Unable to add candidate.",
       candidate: null,
-      error: err.message,
     });
   }
 }
@@ -110,7 +109,8 @@ async function GetAllCandidates(call) {
   console.log("📤 Fetching candidates from DB...");
 
   try {
-    const candidatesArray = await candidatesCollection.find().toArray();
+    // const candidatesArray = await candidatesCollection.find().toArray();
+    const candidatesArray = await Candidate.find();
 
     if (candidatesArray.length === 0) {
       console.log("🔴 No candidates found. Ending stream cleanly.");
@@ -152,12 +152,19 @@ async function UpdateCandidate(call, callback) {
       });
     }
 
-    // Check if candidate exists
-    const existing = await candidatesCollection.findOne({
-      _id: new ObjectId(toUpdate._id),
-    });
+    const updatedCandidate = await Candidate.findByIdAndUpdate(
+      toUpdate._id,
+      {
+        name: toUpdate.name,
+        email: toUpdate.email,
+        position: toUpdate.position,
+        experience: toUpdate.experience,
+        ...(toUpdate.pathCV && { pathCV: toUpdate.pathCV }),
+      },
+      { new: true }
+    );
 
-    if (!existing) {
+    if (!updatedCandidate) {
       return callback(null, {
         status: 404,
         message: `Not Found: Candidate with ID ${toUpdate._id} does not exist.`,
@@ -165,39 +172,12 @@ async function UpdateCandidate(call, callback) {
       });
     }
 
-    const updateFields = {
-      name: toUpdate.name,
-      email: toUpdate.email,
-      position: toUpdate.position,
-      experience: toUpdate.experience,
-    };
+    console.log(`✏️ Candidate ${updatedCandidate.name} updated successfully.`);
 
-    if (toUpdate.pathCV) {
-      updateFields.pathCV = toUpdate.pathCV;
-    }
-
-    const result = await candidatesCollection.updateOne(
-      { _id: new ObjectId(toUpdate._id) },
-      { $set: updateFields }
-    );
-
-    const updated = await candidatesCollection.findOne({
-      _id: new ObjectId(toUpdate._id),
-    });
-
-    if (result.status === 200) {
-      console.log(
-        `✏️ Candidate ${updated.name} with ID ${updated._id} updated successfully.`
-      );
-    } else {
-      console.log(` Candidate ${updated.name} was not updated successfully.`);
-    }
-
-    // Respond with success
     callback(null, {
       status: 200,
-      message: `Candidate ${updated.name} updated successfully.`,
-      candidate: updated,
+      message: `Candidate ${updatedCandidate.name} updated successfully.`,
+      candidate: updatedCandidate.toObject(),
     });
   } catch (err) {
     console.error("❌ DB Update Error:", err.message);
@@ -214,24 +194,22 @@ async function DeleteCandidate(call, callback) {
   const { id } = call.request;
 
   try {
-    const objectId = new ObjectId(id);
+    const deleted = await Candidate.findByIdAndDelete(id);
 
-    const candidate = await candidatesCollection.findOne({ _id: objectId });
-    const result = await candidatesCollection.deleteOne({ _id: objectId });
-
-    if (result.deletedCount === 0) {
+    if (!deleted) {
       return callback(null, {
         message: `Candidate with ID ${id} not found.`,
-        id: id,
+        id,
       });
     }
 
-    const name = candidate?.name || "(unknown)";
-    console.log(`🗑️ Deleted candidate ${name} from candidates collection.`);
+    console.log(
+      `🗑️ Deleted candidate ${deleted.name} from candidates collection.`
+    );
 
     callback(null, {
-      message: `Candidate ${name} deleted successfully.`,
-      id: candidate._id.toString(),
+      message: `Candidate ${deleted.name} deleted successfully.`,
+      id: deleted._id.toString(),
     });
   } catch (error) {
     console.error("❌ Error deleting candidate:", error.message);

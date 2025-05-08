@@ -29,6 +29,25 @@ async function scheduleInterview() {
 
   if (!selectedDate) return alert("📅 Please select a date first.");
 
+  const selected = new Date(selectedDate);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  const maxDate = new Date(today);
+  maxDate.setFullYear(today.getFullYear() + 1);
+
+  if (selected < tomorrow) {
+    return alert("Please choose a future date (starting from tomorrow).");
+  }
+  if (selected > maxDate) {
+    return alert(
+      `Please choose a date within 1 year (until ${
+        maxDate.toISOString().split("T")[0]
+      }).`
+    );
+  }
+
   try {
     const response = await fetch("/schedule-interviews", {
       method: "POST",
@@ -72,6 +91,7 @@ async function scheduleInterview() {
     const continueBtn = document.createElement("button");
     continueBtn.textContent = "➕ Add or Filter More Candidates?";
     continueBtn.style.marginTop = "20px";
+    continueBtn.style.marginBottom = "16px";
 
     // When clicked, show the add and filter sections again
     continueBtn.addEventListener("click", () => {
@@ -128,6 +148,40 @@ async function saveEditInterview(e) {
   const id = form.getAttribute("data-id");
   const dateInput = document.getElementById("edit-interview-date");
   const timeInput = document.getElementById("edit-interview-time");
+
+  const selectedDate = dateInput.value;
+  const selectedTime = timeInput.value;
+
+  const selected = new Date(selectedDate);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  const maxDate = new Date(today);
+  maxDate.setFullYear(today.getFullYear() + 1);
+
+  if (selected < tomorrow) {
+    return alert("Please choose a future date (starting from tomorrow).");
+  }
+  if (selected > maxDate) {
+    return alert(
+      `Please choose a date within 1 year (until ${
+        maxDate.toISOString().split("T")[0]
+      }).`
+    );
+  }
+  const [hours, minutes] = selectedTime.split(":").map(Number);
+
+  if (
+    hours < 9 ||
+    hours > 18 ||
+    (hours === 13 && minutes >= 0 && minutes < 60) ||
+    (hours === 14 && minutes === 0)
+  ) {
+    return alert(
+      "Please choose a time between 09:00 and 18:00, excluding 13:00 to 14:00 for lunch."
+    );
+  }
 
   const newDate = dateInput.value.trim() || form.dataset.oldDate;
   const newTime = timeInput.value.trim() || form.dataset.oldTime;

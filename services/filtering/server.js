@@ -5,25 +5,32 @@ import dotenv from "dotenv";
 import fetch from "node-fetch";
 import fs from "fs/promises";
 import pdfParse from "pdf-parse";
-import { MongoClient, ObjectId } from "mongodb";
-import { analyzeCVWithAI } from "../../ai/analyzeCVWithAI.js";
+import mongoose from "mongoose";
+import { MongoClient } from "mongodb";
+import { Filtered } from "../../models/Filtered.js";
+import { analyzeCVWithAI } from "../../utils/analyzeCVWithAI.js";
 
 dotenv.config();
 
 // ---- MongoDB Setup ----
 const uri = process.env.MONGO_URI;
 const client = new MongoClient(uri);
-
 let db;
 let candidatesCollection;
-let filteredCollection;
 
 async function connectDB() {
-  await client.connect();
-  db = client.db("hiring-db");
-  candidatesCollection = db.collection("candidates"); // 🔍 Input collection
-  filteredCollection = db.collection("filtered"); // 💾 Output collection
-  console.log("✅ Connected to MongoDB");
+  try {
+    await client.connect();
+    db = client.db("hiring-db");
+    candidatesCollection = db.collection("candidates");
+    console.log("✅ MongoClient connected.");
+
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("✅ Mongoose connected.");
+  } catch (err) {
+    console.error("❌ MongoDB connection error:", err.message);
+    throw err;
+  }
 }
 
 // ---- Proto Setup ----
@@ -41,7 +48,7 @@ async function FilterCandidates(call, callback) {
   });
 
   try {
-    await filteredCollection.deleteMany({});
+    await Filtered.deleteMany({});
     console.log("🧹 Cleared previously filtered candidates.");
 
     const minExp =
@@ -84,7 +91,8 @@ async function FilterCandidates(call, callback) {
         const aiResult = await analyzeCVWithAI(parsed.text, position);
 
         if (aiResult.relevant) {
-          await filteredCollection.insertOne(c);
+          // await filteredCollection.insertOne(c);
+          await Filtered.create(c);
           call.write(c);
           count++;
         } else {
@@ -113,23 +121,21 @@ async function DeleteCandidate(call, callback) {
   const { id } = call.request;
 
   try {
-    const objectId = new ObjectId(id);
+    const candidate = await Filtered.findByIdAndDelete(id);
 
-    const candidate = await filteredCollection.findOne({ _id: objectId });
-    const result = await filteredCollection.deleteOne({ _id: objectId });
-
-    if (result.deletedCount === 0) {
+    if (!candidate) {
       return callback(null, {
         message: `Candidate with ID ${id} not found in filtered collection.`,
         id: id,
       });
     }
 
-    const name = candidate?.name || "(unknown)";
-    console.log(`🗑️ Deleted candidate ${name} from filtered collection.`);
+    console.log(
+      `🗑️ Deleted candidate ${candidate.name} from filtered collection.`
+    );
 
     callback(null, {
-      message: `Candidate ${name} deleted successfully.`,
+      message: `Candidate ${candidate.name} deleted successfully.`,
       id: candidate._id.toString(),
     });
   } catch (err) {

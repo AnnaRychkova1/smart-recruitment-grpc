@@ -1,47 +1,53 @@
-import grpc from "@grpc/grpc-js"; // gRPC package for setting up the server
-import protoLoader from "@grpc/proto-loader"; // Proto file loader for gRPC
-import path from "path"; // To resolve paths to files
-import dotenv from "dotenv"; // For environment variable management
-import fetch from "node-fetch"; // For making HTTP requests
-import { MongoClient, ObjectId } from "mongodb"; // MongoDB client and ObjectId for querying
+import grpc from "@grpc/grpc-js";
+import protoLoader from "@grpc/proto-loader";
+import path from "path";
+import dotenv from "dotenv";
+import fetch from "node-fetch";
+import { MongoClient } from "mongodb";
+import mongoose from "mongoose";
+import { Interview } from "../../models/Interview.js";
 
-dotenv.config(); // Load environment variables from .env file
+dotenv.config();
 
 // ---- MongoDB Setup ----
-const uri = process.env.MONGO_URI; // MongoDB URI from environment variables
-const client = new MongoClient(uri); // Create a MongoDB client
+const uri = process.env.MONGO_URI;
+const client = new MongoClient(uri);
 
-let db; // MongoDB database
-let filteredCollection; // Collection for filtered candidates
-let interviewsCollection; // Collection for scheduled interviews
+let db;
+let filteredCollection;
 
-// Connect to MongoDB and set up collections
 async function connectDB() {
-  await client.connect();
-  db = client.db("hiring-db");
-  filteredCollection = db.collection("filtered"); // Collection of filtered candidates
-  interviewsCollection = db.collection("interviews"); // Collection for scheduled interviews
-  console.log("✅ Connected to MongoDB");
+  try {
+    await client.connect();
+    db = client.db("hiring-db");
+    filteredCollection = db.collection("filtereds");
+    console.log("✅ MongoClient connected.");
+
+    await mongoose.connect(uri);
+    console.log("✅ Mongoose connected.");
+  } catch (err) {
+    console.error("❌ MongoDB connection error:", err.message);
+    throw err;
+  }
 }
 
 // ---- Proto Setup ----
-const PROTO_PATH = path.join(process.cwd(), "proto", "interview.proto"); // Path to gRPC Proto file
-const packageDef = protoLoader.loadSync(PROTO_PATH); // Load Proto file
-const interviewProto = grpc.loadPackageDefinition(packageDef).interview; // Load interview service
+const PROTO_PATH = path.join(process.cwd(), "proto", "interview.proto");
+const packageDef = protoLoader.loadSync(PROTO_PATH);
+const interviewProto = grpc.loadPackageDefinition(packageDef).interview;
 
 // ---- ScheduleInterviews RPC Method ----
 async function ScheduleInterviews(call, callback) {
-  await interviewsCollection.deleteMany({});
-  console.log("🧹 Cleared previously scheduled interviews.");
-  const { date } = call.request; // Get the interview date from the request
-
-  console.log(`📥 Scheduling interviews for ${date}`);
-
   try {
-    const candidates = await filteredCollection.find().toArray(); // Get all filtered candidates
+    await Interview.deleteMany({});
+    console.log("🧹 Cleared previously scheduled interviews.");
+
+    let { date } = call.request;
+    console.log(`📥 Scheduling interviews for ${date}`);
+
+    const candidates = await filteredCollection.find().toArray();
 
     if (!candidates.length) {
-      // Check if there are no candidates
       console.warn("⚠️ No candidates found in filtered collection.");
       return callback(null, {
         message: "No candidates available to schedule interviews.",
@@ -49,117 +55,146 @@ async function ScheduleInterviews(call, callback) {
       });
     }
 
-    // Interview scheduling logic
-    const interviewDuration = 60; // Set interview duration to 60 minutes
-    const workStart = new Date(`${date}T09:00:00`); // Workday starts at 9:00 AM
-    const lunchStart = new Date(`${date}T13:00:00`); // Lunch break starts at 1:00 PM
-    const lunchEnd = new Date(`${date}T14:00:00`); // Lunch break ends at 2:00 PM
-    const workEnd = new Date(`${date}T18:00:00`); // Workday ends at 6:00 PM
+    const interviewDuration = 60;
+    let workStart = new Date(`${date}T09:00:00`);
+    let lunchStart = new Date(`${date}T13:00:00`);
+    let lunchEnd = new Date(`${date}T14:00:00`);
+    let workEnd = new Date(`${date}T18:00:00`);
 
-    let current = new Date(workStart); // Start scheduling interviews from 9:00 AM
-    const scheduled = []; // Array to store scheduled interviews
+    let current = new Date(workStart);
+    const scheduled = [];
 
-    // Loop through candidates and schedule interviews
     for (const candidate of candidates) {
       if (current >= lunchStart && current < lunchEnd) {
-        current = new Date(lunchEnd); // Skip lunch break time
+        current = new Date(lunchEnd);
       }
 
+      // If we've reached the end of the workday, move to the next day
       if (current >= workEnd) {
-        // Stop if there are no more available slots
-        console.warn("⏰ No more available slots for the day.");
-        break;
+        const nextDay = new Date(date);
+        nextDay.setDate(current.getDate() + 1); // Add one day
+
+        date = nextDay.toISOString().split("T")[0];
+        workStart = new Date(`${date}T09:00:00`);
+        lunchStart = new Date(`${date}T13:00:00`);
+        lunchEnd = new Date(`${date}T14:00:00`);
+        workEnd = new Date(`${date}T18:00:00`);
+        current = new Date(workStart);
+
+        console.log(
+          `⏰ No more available slots for today. Moving to the next day!`
+        );
       }
 
       const interview = {
-        candidateId: candidate._id,
         name: candidate.name,
-        date,
-        time: current.toTimeString().slice(0, 5), // Set interview time
+        date: current.toISOString().split("T")[0],
+        time: current.toTimeString().slice(0, 5),
       };
+      const newInterview = new Interview(interview);
+      await newInterview.save();
 
-      await interviewsCollection.insertOne(interview); // Insert interview into the database
-      scheduled.push(interview); // Add interview to the scheduled array
+      scheduled.push({
+        _id: newInterview.id.toString(),
+        name: newInterview.name,
+        date: newInterview.date,
+        time: newInterview.time,
+      });
 
-      console.log(`🟢 Scheduled: ${candidate.name} at ${interview.time}`);
+      console.log(`🟢 Scheduled: ${interview.name} at ${interview.time}`);
 
-      current = new Date(current.getTime() + interviewDuration * 60 * 1000); // Move to the next available slot
+      current = new Date(current.getTime() + interviewDuration * 60 * 1000);
     }
 
     callback(null, {
       message: `Successfully scheduled ${scheduled.length} interview(s) on ${date}`,
-      scheduled, // Return the scheduled interviews
+      scheduled,
     });
   } catch (err) {
-    console.error("❌ ScheduleInterviews Error:", err.message); // Log error
+    console.error("❌ ScheduleInterviews Error:", err.message);
     callback({
       code: grpc.status.INTERNAL,
-      message: "Server error while scheduling interviews.", // Send error response
+      message: "Server error while scheduling interviews.",
     });
   }
 }
 
-// ---- EditInterview RPC Method ----
+// ---- UpdateInterview RPC Method ----
 async function UpdateInterview(call, callback) {
-  console.log(call.request);
   const { id, newDate, newTime } = call.request;
-  console.log(id, newTime, newDate);
-  try {
-    // Basic validation
-    if (!id || !newDate || !newTime) {
-      return callback(null, {
-        status: 400,
-        message: "Bad Request: All fields must be provided and valid.",
-        updated: null,
-      });
-    }
 
-    // Check if candidate exists
-    const existing = await interviewsCollection.findOne({
-      _id: new ObjectId(id),
+  if (!id || !newDate || !newTime) {
+    return callback(null, {
+      status: 400,
+      message: "All fields (id, newDate, newTime) are required.",
+      updated: null,
     });
+  }
 
-    if (!existing) {
-      return callback(null, {
-        status: 404,
-        message: `Not Found: Candidate with ID ${id} does not exist.`,
-        updated: null,
-      });
+  try {
+    // Check if there are any interviews on the same date
+    const existingInterviews = await Interview.find({ date: newDate });
+
+    // Check if the time of the new interview overlaps with any existing interviews
+    for (const interview of existingInterviews) {
+      // Calculate the start and end time of the new interview
+      const interviewStart = new Date(`${newDate}T${newTime}:00`);
+      const interviewEnd = new Date(interviewStart.getTime() + 60 * 60 * 1000); // Interview duration is 1 hour
+
+      // Calculate the start and end time of the existing interview
+      const existingInterviewStart = new Date(
+        `${newDate}T${interview.time}:00`
+      );
+      const existingInterviewEnd = new Date(
+        existingInterviewStart.getTime() + 60 * 60 * 1000
+      ); // 1-hour interview duration
+
+      // Check if the new interview overlaps with an existing interview
+      if (
+        (interviewStart < existingInterviewEnd &&
+          interviewStart >= existingInterviewStart) || // New interview starts during the existing one
+        (interviewEnd > existingInterviewStart &&
+          interviewEnd <= existingInterviewEnd) // New interview ends during the existing one
+      ) {
+        return callback(null, {
+          status: 400,
+          message:
+            "The interview time overlaps with an existing interview. Please ensure there is at least one hour between interviews.",
+          updated: null,
+        });
+      }
     }
 
-    const updateFields = {
-      date: newDate,
-      time: newTime,
-    };
-
-    const result = await interviewsCollection.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updateFields }
+    const interview = await Interview.findByIdAndUpdate(
+      id,
+      { date: newDate, time: newTime },
+      { new: true }
     );
 
-    const interview = await interviewsCollection.findOne({
-      _id: new ObjectId(id),
-    });
-
-    if (result.status === 200) {
-      console.log(
-        `✏️ Interview ${interview.name} with ID ${interview._id} updated successfully.`
-      );
-    } else {
-      console.log(`Interview ${interview.name} was not updated successfully.`);
+    if (!interview) {
+      return callback(null, {
+        status: 404,
+        message: `Interview with ID ${id} not found.`,
+        updated: null,
+      });
     }
 
-    // Respond with success
+    // ця перевірка має бути тут. У
     callback(null, {
       status: 200,
-      message: `Interview ${interview.name} updated successfully.`,
-      updated: interview,
+      message: `Interview updated successfully.`,
+      updated: {
+        _id: interview.id.toString(),
+        name: interview.name,
+        date: interview.date,
+        time: interview.time,
+      },
     });
   } catch (err) {
-    console.error("❌ DB Update Error:", err.message);
+    console.error("❌ UpdateInterview Error:", err.message);
     callback(null, {
       status: 500,
-      message: "Internal Server Error: Unable to update candidate.",
+      message: "Error while updating interview.",
       updated: null,
     });
   }
@@ -170,76 +205,64 @@ async function DeleteInterview(call, callback) {
   const { id } = call.request;
 
   try {
-    const objectId = new ObjectId(id);
+    const interview = await Interview.findByIdAndDelete(id);
 
-    const interview = await interviewsCollection.findOne({ _id: objectId });
-    const result = await interviewsCollection.deleteOne({ _id: objectId });
-
-    if (result.deletedCount === 0) {
+    if (!interview) {
       return callback(null, {
-        message: `Interview with ID ${id} not found in interview collection.`,
+        message: `Interview with ID ${id} not found.`,
         id,
       });
     }
 
-    const name = interview?.name || "(unknown)";
-    console.log(`🗑️ Deleted interview for ${name} from interview collection.`);
-
+    console.log(`🗑️ Deleted interview for candidate ${interview.name}`);
     callback(null, {
-      message: `Interview ${name} deleted successfully.`,
-      id: interview._id.toString(),
+      message: "Interview deleted successfully.",
+      id,
     });
   } catch (err) {
-    console.error("❌ Delete Interview Error:", err.message);
+    console.error("❌ DeleteInterview Error:", err.message);
     callback({
       code: grpc.status.INTERNAL,
-      message: "Server error while deleting interview.",
+      message: "Error deleting interview.",
     });
   }
 }
 
 // ---- gRPC Server Initialization ----
-const server = new grpc.Server(); // Create a new gRPC server
+const server = new grpc.Server();
 
 server.addService(interviewProto.InterviewService.service, {
   ScheduleInterviews,
   UpdateInterview,
   DeleteInterview,
-}); // Register the RPC methods to the server
+});
 
-const PORT = process.env.INTERVIEW_PORT || 50053; // Port for the server
-const HOST = "localhost"; // Host for the server
+const PORT = process.env.INTERVIEW_PORT || 50053;
+const HOST = "localhost";
 
-// ---- Start Server After DB Connection ----
-connectDB() // Connect to the database
-  .then(() => {
-    server.bindAsync(
-      `0.0.0.0:${PORT}`, // Bind the server to all interfaces on the specified port
-      grpc.ServerCredentials.createInsecure(),
-      () => {
-        console.log(`🚀 InterviewService running on port ${PORT}`);
+connectDB().then(() => {
+  server.bindAsync(
+    `0.0.0.0:${PORT}`,
+    grpc.ServerCredentials.createInsecure(),
+    () => {
+      console.log(`🚀 InterviewService running on port ${PORT}`);
 
-        // Register with a discovery service to be discoverable
-        fetch("http://localhost:3001/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            serviceName: "InterviewService",
-            host: HOST,
-            port: PORT,
-          }),
+      fetch("http://localhost:3001/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serviceName: "InterviewService",
+          host: HOST,
+          port: PORT,
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          console.log("📡 Registered with discovery:", data);
         })
-          .then((res) => res.json())
-          .then((data) => {
-            console.log("📡 Registered with discovery:", data); // Log successful registration
-          })
-          .catch((err) => {
-            console.error("❌ Discovery registration failed:", err.message); // Log failed registration
-          });
-      }
-    );
-  })
-  .catch((err) => {
-    console.error("❌ Failed to connect to MongoDB:", err.message); // Log connection failure
-    process.exit(1); // Exit the process if DB connection fails
-  });
+        .catch((err) =>
+          console.error("❌ Discovery registration failed:", err.message)
+        );
+    }
+  );
+});

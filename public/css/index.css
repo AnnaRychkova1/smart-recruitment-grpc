@@ -95,8 +95,9 @@ input[type="email"],
 input[type="number"],
 input[type="file"],
 input[type="date"],
-input[type="time"] {
-  width: 100%;
+input[type="time"],
+input[type="password"] {
+  width: 98%;
   padding: 10px;
   margin: 8px 0;
   border: 1px solid #ccc;
@@ -110,7 +111,8 @@ input[type="email"]:focus,
 input[type="number"]:focus,
 input[type="file"]:focus,
 input[type="date"]:focus,
-input[type="time"]:focus {
+input[type="time"]:focus,
+input[type="password"] {
   border-color: #007bff;
   outline: none;
 }
@@ -244,4 +246,29 @@ td:hover {
 
 #show-form-filter-btn {
   margin-bottom: 20px;
+}
+
+/* Heared */
+nav > ul {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  gap: 20px;
+}
+
+header a {
+  color: black;
+}
+
+header a.active {
+  color: #007bff;
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+/* Footer */
+footer > p {
+  margin-bottom: 6px;
+  text-align: right;
+  font-size: 12px;
 }

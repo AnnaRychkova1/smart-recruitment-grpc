@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="icon" type="image/svg+xml" href="../images/favicon.png" />
+      <title>Sign In</title>
+      <link rel="stylesheet" href="/css/index.css" />
+    </head>
+  </head>
+  <body>
+    <header>
+      <nav>
+        <ul>
+          <li><a href="/">Smart Recruitment</a></li>
+          <li><a class="active" href="/signin">Sign In</a></li>
+          <li><a href="/signup">Sign Up</a></li>
+        </ul>
+      </nav>
+      <hr />
+    </header>
+    <main>
+      <h1>Sign In</h1>
+      <form method="POST" action="/signin">
+        <label>Email:</label>
+        <input id="signin-email" type="email" name="email" required /><br />
+        <label>Password:</label>
+        <input
+          id="signin-password"
+          type="password"
+          name="password"
+          required
+        /><br />
+        <button type="submit">Login</button>
+      </form>
+    </main>
+    <footer>
+      <hr />
+      <p>
+        Created by Anna Rychkova as part of the Distributed Systems project<br />
+        Higher Diploma in Science in Computing, National College of Ireland<br />
+        Student No. 23180188
+      </p>
+    </footer>
+  </body>
+</html>
