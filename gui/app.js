@@ -2,10 +2,13 @@
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
+
 import mainRoutes from "../routes/mainRoutes.js";
 import hiringRoutes from "../routes/hiringRoutes.js";
 import filteringRoutes from "../routes/filteringRoutes.js";
 import interviewRoutes from "../routes/interviewRoutes.js";
+
+import { errorHandler } from "../middlware/errorHandler.js";
 
 dotenv.config();
 
@@ -22,6 +25,7 @@ app.use("/", mainRoutes);
 app.use("/", hiringRoutes);
 app.use("/", filteringRoutes);
 app.use("/", interviewRoutes);
+app.use(errorHandler);
 
 const PORT = process.env.CLIENT_PORT || 3000;
 app.listen(PORT, () => {

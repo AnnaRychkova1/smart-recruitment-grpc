@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { asyncHandler } from "../utils/asyncHandler.js";
 import {
   deleteInterview,
   scheduleInterviews,
@@ -7,10 +8,8 @@ import {
 
 const router = Router();
 
-router.post("/schedule-interviews", scheduleInterviews);
-
-router.put("/update-interview/:id", updateInterview);
-
-router.delete("/delete-interview/:id", deleteInterview);
+router.post("/schedule-interviews", asyncHandler(scheduleInterviews));
+router.put("/update-interview/:id", asyncHandler(updateInterview));
+router.delete("/delete-interview/:id", asyncHandler(deleteInterview));
 
 export default router;
