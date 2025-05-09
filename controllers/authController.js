@@ -1,12 +1,9 @@
 import { getGrpcClientForService } from "../utils/getGrpcClientForService.js";
-import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 // Signup
 export const handleSignup = async (req, res, next) => {
   const { name, email, password } = req.body;
-
-  console.log(name, email, password);
 
   const client = await getGrpcClientForService("AuthService");
 

@@ -1,4 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    window.location.href = "/signin";
+  }
   // Handle click on the "Schedule Interview" button
   const scheduleBtn = document.getElementById("schedule-btn");
   if (scheduleBtn) {
