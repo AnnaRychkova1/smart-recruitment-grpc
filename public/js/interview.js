@@ -48,10 +48,15 @@ async function scheduleInterview() {
     );
   }
 
+  const token = localStorage.getItem("token");
+
   try {
     const response = await fetch("/schedule-interviews", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({
         date: selectedDate,
       }),
@@ -192,10 +197,15 @@ async function saveEditInterview(e) {
     new_time: newTime,
   };
 
+  const token = localStorage.getItem("token");
+
   try {
     const response = await fetch(`/update-interview/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify(request),
     });
 
@@ -216,10 +226,14 @@ async function saveEditInterview(e) {
 // 🗑️ Delete an interview
 async function deleteInterview(id) {
   if (!confirm("Are you sure you want to delete this interview?")) return;
+  const token = localStorage.getItem("token");
 
   try {
     const response = await fetch(`/delete-interview/${id}`, {
       method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     const result = await response.json();

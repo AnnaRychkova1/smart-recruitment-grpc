@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { authenticateToken } from "../middlware/authenticate.js";
 import {
   deleteFiltered,
   filteringCandidates,
@@ -7,7 +8,15 @@ import {
 
 const router = Router();
 
-router.get("/filter-candidates", asyncHandler(filteringCandidates));
-router.delete("/delete-filtered/:id", asyncHandler(deleteFiltered));
+router.get(
+  "/filter-candidates",
+  authenticateToken,
+  asyncHandler(filteringCandidates)
+);
+router.delete(
+  "/delete-filtered/:id",
+  authenticateToken,
+  asyncHandler(deleteFiltered)
+);
 
 export default router;

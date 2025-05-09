@@ -1,6 +1,10 @@
 // filtering.js
 
 document.addEventListener("DOMContentLoaded", () => {
+  const userWelcome = document.getElementById("user-welcome");
+  const userNameWelcome = localStorage.getItem("name");
+  userWelcome.textContent = `Hi ${userNameWelcome}`;
+
   // Handle submission of the filter form
   const filterForm = document.getElementById("filter-form");
   if (filterForm) {
@@ -43,8 +47,15 @@ async function submitFilterForm() {
   if (formData.get("position"))
     params.append("position", formData.get("position"));
 
+  const token = localStorage.getItem("token");
+
   try {
-    const response = await fetch(`/filter-candidates?${params.toString()}`);
+    const response = await fetch(`/filter-candidates?${params.toString()}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     const { filtered } = await response.json();
 
@@ -124,11 +135,15 @@ async function submitFilterForm() {
 async function deleteFilteredCandidate(_id) {
   // Confirm deletion before proceeding
   if (!confirm("Are you sure you want to delete this candidate?")) return;
+  const token = localStorage.getItem("token");
 
   try {
     // Send a DELETE request to the server to delete the candidate
     const response = await fetch(`/delete-filtered/${_id}`, {
       method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     // Check if the response status is OK (200)

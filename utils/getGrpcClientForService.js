@@ -4,6 +4,7 @@ const protoFiles = {
   HiringService: "hiring.proto",
   InterviewService: "interview.proto",
   FilteringService: "filtering.proto",
+  AuthService: "auth.proto",
 };
 
 export const getGrpcClientForService = async (serviceName) => {

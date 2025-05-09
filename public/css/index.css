@@ -248,6 +248,11 @@ td:hover {
   margin-bottom: 20px;
 }
 
+#user-welcome {
+  font-size: 24px;
+  font-weight: bold;
+}
+
 /* Heared */
 nav > ul {
   display: flex;
@@ -258,12 +263,27 @@ nav > ul {
 
 header a {
   color: black;
+  cursor: pointer;
 }
 
 header a.active {
   color: #007bff;
   font-weight: bold;
   text-decoration: underline;
+}
+
+#logout-btn {
+  padding: 0;
+  padding-right: 10px;
+  color: black;
+  cursor: pointer;
+  text-decoration: underline;
+  background-color: #ececf9;
+  transition: background-color 0.3s, transform 0.2s;
+}
+
+#logout-btn:hover {
+  transform: translateX(5px);
 }
 
 /* Footer */

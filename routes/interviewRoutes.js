@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { authenticateToken } from "../middlware/authenticate.js";
 import {
   deleteInterview,
   scheduleInterviews,
@@ -8,8 +9,20 @@ import {
 
 const router = Router();
 
-router.post("/schedule-interviews", asyncHandler(scheduleInterviews));
-router.put("/update-interview/:id", asyncHandler(updateInterview));
-router.delete("/delete-interview/:id", asyncHandler(deleteInterview));
+router.post(
+  "/schedule-interviews",
+  authenticateToken,
+  asyncHandler(scheduleInterviews)
+);
+router.put(
+  "/update-interview/:id",
+  authenticateToken,
+  asyncHandler(updateInterview)
+);
+router.delete(
+  "/delete-interview/:id",
+  authenticateToken,
+  asyncHandler(deleteInterview)
+);
 
 export default router;

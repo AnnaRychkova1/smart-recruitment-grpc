@@ -15,6 +15,9 @@
           <li><a class="active" href="/">Smart Recruitment</a></li>
           <li><a href="/signin">Sign In</a></li>
           <li><a href="/signup">Sign Up</a></li>
+          <li>
+            <button id="logout-btn">Logout</button>
+          </li>
         </ul>
       </nav>
       <hr />
@@ -22,8 +25,8 @@
     <main>
       <h1>🧠 Smart Recruitment</h1>
       <p class="welcoming">
-        Welcome to the future of hiring!<br />Streamlining your hiring process
-        with smart technology
+        <span id="user-welcome"></span> <br />Welcome to the future of
+        hiring!<br />Streamlining your hiring process with smart technology
       </p>
       <section id="add-section">
         <h2>📥 Add candidate</h2>
@@ -201,5 +204,6 @@
     <script defer src="/js/hiring.js"></script>
     <script defer src="/js/filtering.js"></script>
     <script defer src="/js/interview.js"></script>
+    <script defer src="/js/logout.js"></script>
   </body>
 </html>

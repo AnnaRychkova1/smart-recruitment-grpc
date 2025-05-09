@@ -22,7 +22,7 @@
     </header>
     <main>
       <h1>Sign Up</h1>
-      <form method="POST" action="/signup">
+      <form method="POST" id="signup-form" action="/signup">
         <label>Name:</label>
         <input id="signup-name" type="text" name="name" required /><br />
         <label>Email:</label>
@@ -36,6 +36,7 @@
         /><br />
         <button type="submit">Register</button>
       </form>
+      <div id="error-message" style="color: red; display: none"></div>
     </main>
     <footer>
       <hr />
@@ -45,5 +46,6 @@
         Student No. 23180188
       </p>
     </footer>
+    <script defer src="/js/signup.js"></script>
   </body>
 </html>

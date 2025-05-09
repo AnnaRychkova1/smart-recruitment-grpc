@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package auth;
+
+service AuthService {
+  rpc SignUp (SignUpRequest) returns (AuthResponse);
+  rpc SignIn (SignInRequest) returns (AuthResponse);
+}
+
+message SignUpRequest {
+  string name = 1;
+  string email = 2;
+  string password = 3;
+}
+
+message SignInRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message AuthResponse {
+  string name = 1;
+}
+

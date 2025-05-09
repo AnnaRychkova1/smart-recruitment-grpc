@@ -51,9 +51,19 @@ async function toggleCandidateList() {
     candidatesVisible = false;
     return;
   }
+  const token = localStorage.getItem("token");
 
   try {
-    const response = await fetch("/get-candidates");
+    // const response = await fetch("/get-candidates");
+    const response = await fetch("/get-candidates", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    console.log(response);
     if (!response.ok) throw new Error();
 
     const { candidates } = await response.json();
@@ -173,10 +183,14 @@ async function submitCandidateForm() {
   }
 
   const formData = new FormData(form);
+  const token = localStorage.getItem("token");
 
   try {
     const response = await fetch("/add-candidate", {
       method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
       body: formData,
     });
     const result = await response.json();
@@ -201,10 +215,14 @@ async function submitCandidateForm() {
 // Delete candidate by ID
 async function deleteCandidate(_id) {
   if (!confirm("Are you sure you want to delete this candidate?")) return;
+  const token = localStorage.getItem("token");
 
   try {
     const response = await fetch(`/delete-candidate/${_id}`, {
       method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     if (!response.ok) {
@@ -264,10 +282,14 @@ async function updateCandidate() {
   const editModal = document.getElementById("edit-candidate-modal");
   const formData = new FormData(editForm);
   const candidateId = editForm.getAttribute("data-id");
+  const token = localStorage.getItem("token");
 
   try {
     const response = await fetch(`/update-candidate/${candidateId}`, {
       method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
       body: formData,
     });
 
