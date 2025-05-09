@@ -29,6 +29,8 @@ Handles user registration and login.
 - `POST /api/signup` – Create user
 - `POST /api/signin` – Log in user
 
+> Logout functionality is implemented only on the client side
+
 ---
 
 ### 👤 Hiring Service (`/services/hiring`)
@@ -101,11 +103,11 @@ Client uses **`/js/*.js`** scripts for AJAX communication with the services.
 
 ## 📸 UI Preview
 
-| Dashboard (Main)                          | Filter Modal                                     | Schedule Interview                                 |
+| Hiring                                    | Filtering                                        | Interview                                          |
 | ----------------------------------------- | ------------------------------------------------ | -------------------------------------------------- |
 | ![UI](./screenshots/Interface/Hiring.png) | ![Filter](./screenshots/Interface/Filtering.png) | ![Schedule](./screenshots/Interface/Scheduled.png) |
 
-### To explore more details, open the folder 📂 `./screenshoots/Interface/Filtering.png`
+### To explore more details, open the folder 📂 `./screenshots/Interface`
 
 ## ⚙️ Getting Started
 
@@ -114,7 +116,9 @@ Client uses **`/js/*.js`** scripts for AJAX communication with the services.
 This project uses **native ES Modules**, enabled via the following in `package.json`:
 
 ```json
-"type": "module"
+{
+  "type": "module"
+}
 ```
 
 Use `import`/`export` syntax (instead of CommonJS `require`). Make sure you're running **Node.js v14+** for full support.
@@ -148,19 +152,30 @@ The Discovery service is run separately to ensure it starts **before** the other
 
 ### 🖼️ Demo & Screenshots
 
-For showcasing the system:
+#### HiringService
 
-1. Run each service in a **separate terminal window**.
-2. Use **Postman** to test endpoints (login, add candidate, filter candidates, schedule interviews).
-3. Take **screenshots of terminals and Postman responses**.
-4. Save them in a `/screenshots` folder.
-5. Embed them in the `README` if needed.
+![POST /add-candidate](./screenshots/Postman/AddCandidate.png)
+![GET /get-candidates](./screenshots/Postman/GetCandidates.png)
+![PUT /update-candidate/:id](./screenshots/Postman/UpdateCandidate.png)
+![DELETE /delete-candidate/:id](./screenshots/Postman/DeleteCandidate.png)
+
+### FilteringService
+
+![GET /filter-candidates](./screenshots/Postman/FilterCandidates.png)
+![DELETE /delete-filtered/:id](./screenshots/Postman/DeleteFiltered.png)
+
+### InterviewService
+
+![POST /schedule-interviews](./screenshots/Postman/ScheduleInterviews.png)
+![POST /schedule-interviews](./screenshots/Postman/ScheduleInterviews1.png)
+![PUT /update-interview/:id](./screenshots/Postman/UpdateInterview.png)
+![DELETE /delete-interview/:id](./screenshots/Postman/DeleteInterview.png)
 
 ---
 
 ### 3. Open in browser
 
-Navigate to [http://localhost:3000](http://localhost:3000)
+Visit [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
