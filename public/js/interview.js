@@ -1,8 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const token = localStorage.getItem("token");
-  if (!token) {
-    window.location.href = "/signin";
-  }
+  if (!ensureValidToken()) return;
   // Handle click on the "Schedule Interview" button
   const scheduleBtn = document.getElementById("schedule-btn");
   if (scheduleBtn) {
@@ -18,6 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // 🟢 Schedule an interview
 async function scheduleInterview() {
+  if (!ensureValidToken()) return;
   const interviewBox = document.getElementById("interview-container");
   const interviewSection = document.getElementById("interview-section");
   const interviewTitle = document.getElementById("interview-title");
@@ -130,6 +128,7 @@ async function scheduleInterview() {
 
 // ✏️ Open the modal for editing an interview
 function editInterview(entry) {
+  if (!ensureValidToken()) return;
   const modal = document.getElementById("edit-interview-modal");
 
   const form = document.getElementById("edit-interview-form");
@@ -150,6 +149,7 @@ function editInterview(entry) {
 // 💾 Save the edited interview
 async function saveEditInterview(e) {
   e.preventDefault();
+  if (!ensureValidToken()) return;
 
   const form = document.getElementById("edit-interview-form");
   const modal = document.getElementById("edit-interview-modal");
@@ -230,6 +230,7 @@ async function saveEditInterview(e) {
 // 🗑️ Delete an interview
 async function deleteInterview(id) {
   if (!confirm("Are you sure you want to delete this interview?")) return;
+  if (!ensureValidToken()) return;
   const token = localStorage.getItem("token");
 
   try {
@@ -259,6 +260,7 @@ async function deleteInterview(id) {
 
 // Function to update the interview in the DOM after editing
 function updateInterviewInDOM(updatedInterview) {
+  if (!ensureValidToken()) return;
   const row = document.querySelector(
     `#schedule-body tr[data-id='${updatedInterview._id}']`
   );
@@ -269,14 +271,8 @@ function updateInterviewInDOM(updatedInterview) {
 }
 
 // Function to remove the interview from the DOM after deletion
-function removeInterviewFromDOM(_id) {
-  const row = document.querySelector(`#schedule-body tr[data-id='${_id}']`);
-  if (row) {
-    row.remove();
-  }
-}
-
 function deleteInterviewFromDom(id) {
+  if (!ensureValidToken()) return;
   const tableBody = document.getElementById("schedule-body");
   const row = tableBody.querySelector(`tr[data-id="${id}"]`);
 
@@ -293,5 +289,29 @@ function deleteInterviewFromDom(id) {
 
   if (remainingRows.length === 0) {
     tableBody.innerHTML = `<tr><td colspan="4">No scheduled interviews.</td></tr>`;
+  }
+}
+
+// Check is token valid
+function ensureValidToken() {
+  const token = localStorage.getItem("token");
+  if (!token || isTokenExpired(token)) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("name");
+    alert(
+      "⚠️ Your session has expired due to inactivity. Please sign in again."
+    );
+    window.location.href = "/signin";
+    return false;
+  }
+  return true;
+}
+function isTokenExpired(token) {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    const currentTime = Math.floor(Date.now() / 1000);
+    return payload.exp < currentTime;
+  } catch (err) {
+    return true; // treat invalid tokens as expired
   }
 }

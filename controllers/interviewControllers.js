@@ -60,7 +60,7 @@ export const updateInterview = async (req, res) => {
     });
   });
 
-  if (!response || !response.updated) {
+  if (!response) {
     const error = new Error("No interview data returned from service");
     error.statusCode = 502;
     throw error;

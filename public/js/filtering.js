@@ -1,10 +1,7 @@
 // filtering.js
 
 document.addEventListener("DOMContentLoaded", () => {
-  const token = localStorage.getItem("token");
-  if (!token) {
-    window.location.href = "/signin";
-  }
+  if (!ensureValidToken()) return;
   const userWelcome = document.getElementById("user-welcome");
   const userNameWelcome = localStorage.getItem("name");
   userWelcome.textContent = `Hi ${userNameWelcome}`;
@@ -31,6 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
  * Sends a filter request to the server and displays the filtered candidates
  */
 async function submitFilterForm() {
+  if (!ensureValidToken()) return;
   const filterTitle = document.getElementById("filter-title");
   const showFilterBtn = document.getElementById("show-form-filter-btn");
   const addSection = document.getElementById("add-section");
@@ -137,6 +135,7 @@ async function submitFilterForm() {
  * @param {string} _id - ID of the candidate to delete
  */
 async function deleteFilteredCandidate(_id) {
+  if (!ensureValidToken()) return;
   // Confirm deletion before proceeding
   if (!confirm("Are you sure you want to delete this candidate?")) return;
   const token = localStorage.getItem("token");
@@ -189,5 +188,29 @@ async function deleteFilteredCandidate(_id) {
   } catch (err) {
     console.error("Error deleting filtered candidate:", err);
     alert(`❌ Failed to delete candidate. Error: ${err.message}`);
+  }
+}
+
+// Check is token valid
+function ensureValidToken() {
+  const token = localStorage.getItem("token");
+  if (!token || isTokenExpired(token)) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("name");
+    alert(
+      "⚠️ Your session has expired due to inactivity. Please sign in again."
+    );
+    window.location.href = "/signin";
+    return false;
+  }
+  return true;
+}
+function isTokenExpired(token) {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    const currentTime = Math.floor(Date.now() / 1000);
+    return payload.exp < currentTime;
+  } catch (err) {
+    return true; // treat invalid tokens as expired
   }
 }

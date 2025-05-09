@@ -2,10 +2,7 @@ let candidatesVisible = false;
 
 // Initialize event listeners after DOM is fully loaded
 document.addEventListener("DOMContentLoaded", () => {
-  const token = localStorage.getItem("token");
-  if (!token) {
-    window.location.href = "/signin";
-  }
+  if (!ensureValidToken()) return;
   const showFormBtn = document.getElementById("show-form-btn");
   const showListBtn = document.getElementById("show-list-btn");
 
@@ -43,6 +40,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Toggle between showing and hiding all candidates
 async function toggleCandidateList() {
+  if (!ensureValidToken()) return;
+
   const btn = document.getElementById("show-list-btn");
   const list = document.getElementById("candidate-list");
 
@@ -67,7 +66,6 @@ async function toggleCandidateList() {
       },
     });
 
-    console.log(response);
     if (!response.ok) throw new Error();
 
     const { candidates } = await response.json();
@@ -121,6 +119,7 @@ async function toggleCandidateList() {
 
 // Submit a new candidate to the server
 async function submitCandidateForm() {
+  if (!ensureValidToken()) return;
   const form = document.getElementById("hiring-form");
   const formModal = document.getElementById("form-modal");
 
@@ -218,6 +217,7 @@ async function submitCandidateForm() {
 
 // Delete candidate by ID
 async function deleteCandidate(_id) {
+  if (!ensureValidToken()) return;
   if (!confirm("Are you sure you want to delete this candidate?")) return;
   const token = localStorage.getItem("token");
 
@@ -251,6 +251,7 @@ async function deleteCandidate(_id) {
 
 // Open edit modal and populate it with candidate data
 function openEditModal(candidate) {
+  if (!ensureValidToken()) return;
   const editModal = document.getElementById("edit-candidate-modal");
   const editForm = document.getElementById("edit-form");
 
@@ -282,6 +283,7 @@ function openEditModal(candidate) {
 }
 
 async function updateCandidate() {
+  if (!ensureValidToken()) return;
   const editForm = document.getElementById("edit-form");
   const editModal = document.getElementById("edit-candidate-modal");
   const formData = new FormData(editForm);
@@ -319,4 +321,28 @@ async function updateCandidate() {
   }
 
   closeModal(editModal);
+}
+
+// Check is token valid
+function ensureValidToken() {
+  const token = localStorage.getItem("token");
+  if (!token || isTokenExpired(token)) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("name");
+    alert(
+      "⚠️ Your session has expired due to inactivity. Please sign in again."
+    );
+    window.location.href = "/signin";
+    return false;
+  }
+  return true;
+}
+function isTokenExpired(token) {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    const currentTime = Math.floor(Date.now() / 1000);
+    return payload.exp < currentTime;
+  } catch (err) {
+    return true; // treat invalid tokens as expired
+  }
 }
