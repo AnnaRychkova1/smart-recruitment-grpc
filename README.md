@@ -30,6 +30,9 @@ Handles user registration and login.
 - `POST /api/signin` – Log in user
 
 > Logout functionality is implemented only on the client side
+> 🔒 Passwords are securely hashed using **bcrypt** before being stored in the database.
+> 🔑 Upon login, users receive a **JWT (JSON Web Token)**, valid for **1 hour**, used for authenticated access to protected endpoints.
+> 🚪 Logout functionality is implemented only on the client side.
 
 ---
 
