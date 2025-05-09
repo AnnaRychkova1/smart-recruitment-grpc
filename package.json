@@ -1,20 +1,31 @@
 {
   "name": "smart-recruitment-grpc",
   "version": "1.0.0",
-  "description": "",
+  "description": "Smart Recruitment System — an intelligent recruitment platform built with Node.js, Express, gRPC, and MongoDB featuring AI-powered candidate filtering.",
   "type": "module",
   "main": "gui/app.js",
   "scripts": {
     "start": "concurrently npm:server:auth npm:server:hiring npm:server:filtering npm:server:interview npm:client",
-    "client": "nodemon gui/app.js",
+    "client": "node gui/app.js",
     "discovery": "node discovery/discovery.js",
-    "server:auth": "nodemon services/auth/server.js",
-    "server:hiring": "nodemon services/hiring/server.js",
-    "server:filtering": "nodemon services/filtering/server.js",
-    "server:interview": "nodemon services/interview/server.js"
+    "server:auth": "node services/auth/server.js",
+    "server:hiring": "node services/hiring/server.js",
+    "server:filtering": "node services/filtering/server.js",
+    "server:interview": "node services/interview/server.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "recruitment",
+    "hiring",
+    "AI-filtering",
+    "candidates",
+    "Node.js",
+    "Express",
+    "gRPC",
+    "MongoDB",
+    "job portal",
+    "smart recruitment"
+  ],
+  "author": "Anna Rychkova",
   "license": "ISC",
   "dependencies": {
     "@grpc/grpc-js": "^1.13.3",
@@ -33,7 +44,5 @@
     "openai": "^4.96.2",
     "pdf-parse": "^1.1.1"
   },
-  "devDependencies": {
-    "nodemon": "^3.1.10"
-  }
+  "devDependencies": {}
 }
