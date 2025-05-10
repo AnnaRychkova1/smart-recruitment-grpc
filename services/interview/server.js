@@ -6,6 +6,7 @@ import fetch from "node-fetch";
 import { MongoClient } from "mongodb";
 import mongoose from "mongoose";
 import { Interview } from "../../models/Interview.js";
+import { verifyTokenFromCallMetadata } from "../../middleware/verifyTokenFromCallMetadata.js";
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ let filteredCollection;
 
 async function connectDB() {
   try {
+    console.log("🔌 Connecting to MongoDB...");
     await client.connect();
     db = client.db("hiring-db");
     filteredCollection = db.collection("filtereds");
@@ -38,6 +40,19 @@ const interviewProto = grpc.loadPackageDefinition(packageDef).interview;
 
 // ---- ScheduleInterviews RPC Method ----
 async function ScheduleInterviews(call, callback) {
+  console.log("📨 Received ScheduleInterviews RPC");
+
+  try {
+    verifyTokenFromCallMetadata(call);
+    console.log("🔑 Token verified");
+  } catch (err) {
+    console.warn("🚫 Unauthorized ScheduleInterviews attempt");
+    return callback({
+      code: grpc.status.UNAUTHENTICATED,
+      message: "Invalid or missing token.",
+    });
+  }
+
   try {
     await Interview.deleteMany({});
     console.log("🧹 Cleared previously scheduled interviews.");
@@ -46,6 +61,7 @@ async function ScheduleInterviews(call, callback) {
     console.log(`📥 Scheduling interviews for ${date}`);
 
     const candidates = await filteredCollection.find().toArray();
+    console.log(`👥 Candidates found: ${candidates.length}`);
 
     if (!candidates.length) {
       console.warn("⚠️ No candidates found in filtered collection.");
@@ -66,13 +82,14 @@ async function ScheduleInterviews(call, callback) {
 
     for (const candidate of candidates) {
       if (current >= lunchStart && current < lunchEnd) {
+        console.log("🍽️ Skipping lunch hour.");
         current = new Date(lunchEnd);
       }
 
-      // If we've reached the end of the workday, move to the next day
       if (current >= workEnd) {
+        console.log("⏰ Day ended, rolling to next day.");
         const nextDay = new Date(date);
-        nextDay.setDate(current.getDate() + 1); // Add one day
+        nextDay.setDate(current.getDate() + 1);
 
         date = nextDay.toISOString().split("T")[0];
         workStart = new Date(`${date}T09:00:00`);
@@ -80,10 +97,6 @@ async function ScheduleInterviews(call, callback) {
         lunchEnd = new Date(`${date}T14:00:00`);
         workEnd = new Date(`${date}T18:00:00`);
         current = new Date(workStart);
-
-        console.log(
-          `⏰ No more available slots for today. Moving to the next day!`
-        );
       }
 
       const interview = {
@@ -102,9 +115,10 @@ async function ScheduleInterviews(call, callback) {
       });
 
       console.log(`🟢 Scheduled: ${interview.name} at ${interview.time}`);
-
       current = new Date(current.getTime() + interviewDuration * 60 * 1000);
     }
+
+    console.log(`✅ Successfully scheduled ${scheduled.length} interview(s).`);
 
     callback(null, {
       message: `Successfully scheduled ${scheduled.length} interview(s) on ${date}`,
@@ -121,9 +135,24 @@ async function ScheduleInterviews(call, callback) {
 
 // ---- UpdateInterview RPC Method ----
 async function UpdateInterview(call, callback) {
+  console.log("📨 Received UpdateInterview RPC");
+
+  try {
+    verifyTokenFromCallMetadata(call);
+    console.log("🔑 Token verified");
+  } catch (err) {
+    console.warn("🚫 Unauthorized UpdateInterview attempt");
+    return callback({
+      code: grpc.status.UNAUTHENTICATED,
+      message: "Invalid or missing token.",
+    });
+  }
+
   const { id, newDate, newTime } = call.request;
+  console.log(`🛠️ Request to update interview ${id} to ${newDate} ${newTime}`);
 
   if (!id || !newDate || !newTime) {
+    console.warn("⚠️ Missing required fields.");
     return callback(null, {
       status: 400,
       message: "All fields (id, newDate, newTime) are required.",
@@ -132,30 +161,22 @@ async function UpdateInterview(call, callback) {
   }
 
   try {
-    // Check if there are any interviews on the same date
     const existingInterviews = await Interview.find({ date: newDate });
+    console.log(
+      `🔍 Checking conflicts with ${existingInterviews.length} interviews`
+    );
 
-    // Check if the time of the new interview overlaps with any existing interviews
     for (const interview of existingInterviews) {
-      // Calculate the start and end time of the new interview
       const interviewStart = new Date(`${newDate}T${newTime}:00`);
-      const interviewEnd = new Date(interviewStart.getTime() + 60 * 60 * 1000); // Interview duration is 1 hour
+      const interviewEnd = new Date(interviewStart.getTime() + 60 * 60 * 1000);
+      const existingStart = new Date(`${newDate}T${interview.time}:00`);
+      const existingEnd = new Date(existingStart.getTime() + 60 * 60 * 1000);
 
-      // Calculate the start and end time of the existing interview
-      const existingInterviewStart = new Date(
-        `${newDate}T${interview.time}:00`
-      );
-      const existingInterviewEnd = new Date(
-        existingInterviewStart.getTime() + 60 * 60 * 1000
-      ); // 1-hour interview duration
-
-      // Check if the new interview overlaps with an existing interview
       if (
-        (interviewStart < existingInterviewEnd &&
-          interviewStart >= existingInterviewStart) || // New interview starts during the existing one
-        (interviewEnd > existingInterviewStart &&
-          interviewEnd <= existingInterviewEnd) // New interview ends during the existing one
+        (interviewStart < existingEnd && interviewStart >= existingStart) ||
+        (interviewEnd > existingStart && interviewEnd <= existingEnd)
       ) {
+        console.warn("⚠️ Time conflict detected.");
         return callback(null, {
           status: 400,
           message:
@@ -172,6 +193,7 @@ async function UpdateInterview(call, callback) {
     );
 
     if (!interview) {
+      console.warn("⚠️ Interview not found.");
       return callback(null, {
         status: 404,
         message: `Interview with ID ${id} not found.`,
@@ -179,7 +201,7 @@ async function UpdateInterview(call, callback) {
       });
     }
 
-    // ця перевірка має бути тут. У
+    console.log(`✅ Interview ${id} updated to ${newDate} ${newTime}`);
     callback(null, {
       status: 200,
       message: `Interview updated successfully.`,
@@ -202,12 +224,27 @@ async function UpdateInterview(call, callback) {
 
 // ---- DeleteInterview RPC Method ----
 async function DeleteInterview(call, callback) {
+  console.log("📨 Received DeleteInterview RPC");
+
+  try {
+    verifyTokenFromCallMetadata(call);
+    console.log("🔑 Token verified");
+  } catch (err) {
+    console.warn("🚫 Unauthorized DeleteInterview attempt");
+    return callback({
+      code: grpc.status.UNAUTHENTICATED,
+      message: "Invalid or missing token.",
+    });
+  }
+
   const { id } = call.request;
+  console.log(`🗑️ Attempting to delete interview ID ${id}`);
 
   try {
     const interview = await Interview.findByIdAndDelete(id);
 
     if (!interview) {
+      console.warn("⚠️ Interview not found for deletion.");
       return callback(null, {
         message: `Interview with ID ${id} not found.`,
         id,

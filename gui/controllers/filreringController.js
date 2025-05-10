@@ -1,3 +1,4 @@
+import { Metadata } from "@grpc/grpc-js";
 import { getGrpcClientForService } from "../utils/getGrpcClientForService.js";
 
 // 📤 Filtering (FilteringService)
@@ -21,13 +22,19 @@ export const filteringCandidates = async (req, res) => {
     maxExperience,
   });
 
+  const metadata = new Metadata();
+  metadata.add("authorization", `${req.headers.authorization}`);
+
   const filtered = await new Promise((resolve, reject) => {
     const result = [];
-    const call = client.FilterCandidates({
-      position,
-      minExperience,
-      maxExperience,
-    });
+    const call = client.FilterCandidates(
+      {
+        position,
+        minExperience,
+        maxExperience,
+      },
+      metadata
+    );
 
     call.on("data", (candidate) => {
       console.log(
@@ -68,8 +75,11 @@ export const deleteFiltered = async (req, res) => {
 
   console.log("[client:filtering] 🟡 Request to delete candidate with ID:", id);
 
+  const metadata = new Metadata();
+  metadata.add("authorization", `${req.headers.authorization}`);
+
   const response = await new Promise((resolve, reject) => {
-    client.DeleteCandidate({ id }, (err, response) => {
+    client.DeleteCandidate({ id }, metadata, (err, response) => {
       if (err) return reject(err);
       resolve(response);
     });

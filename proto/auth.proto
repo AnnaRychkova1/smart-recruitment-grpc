@@ -20,5 +20,6 @@ message SignInRequest {
 
 message AuthResponse {
   string name = 1;
+  string token = 2;
 }
 

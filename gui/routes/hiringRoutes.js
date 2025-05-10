@@ -22,6 +22,7 @@ router.get("/get-candidates", authenticateToken, asyncHandler(getCandidates));
 router.put(
   "/update-candidate/:id",
   upload.single("pathCV"),
+  authenticateToken,
   asyncHandler(updateCandidate)
 );
 router.delete(

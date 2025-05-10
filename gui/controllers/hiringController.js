@@ -1,3 +1,4 @@
+import { Metadata } from "@grpc/grpc-js";
 import { getGrpcClientForService } from "../utils/getGrpcClientForService.js";
 
 // 🔁 Add candidate (HiringService)
@@ -17,6 +18,9 @@ export const addCandidate = async (req, res) => {
     pathCV,
   });
 
+  const metadata = new Metadata();
+  metadata.add("authorization", `${req.headers.authorization}`);
+
   // gRPC call wrapped in a Promise for proper async/await handling
   const response = await new Promise((resolve, reject) => {
     client.AddCandidate(
@@ -27,12 +31,15 @@ export const addCandidate = async (req, res) => {
         experience: parseInt(experience),
         pathCV,
       },
+      metadata,
       (err, response) => {
         if (err) return reject(err);
         resolve(response);
       }
     );
   });
+
+  console.log(response);
 
   if (!response || !response.candidate) {
     const error = new Error("No candidate data received from service.");
@@ -58,10 +65,13 @@ export const getCandidates = async (req, res) => {
 
   const client = await getGrpcClientForService("HiringService");
 
+  const metadata = new Metadata();
+  metadata.add("authorization", `${req.headers.authorization}`);
+
   // gRPC stream wrapped in Promise
   const candidates = await new Promise((resolve, reject) => {
     const result = [];
-    const call = client.GetAllCandidates({});
+    const call = client.GetAllCandidates({}, metadata);
 
     call.on("data", (candidate) => result.push(candidate));
     call.on("end", () => resolve(result));
@@ -84,7 +94,9 @@ export const getCandidates = async (req, res) => {
 // ✏️ Update candidate
 export const updateCandidate = async (req, res) => {
   console.log("[client:hiring] 🟡 Starting to edit a candidate...");
+
   const client = await getGrpcClientForService("HiringService");
+
   const { name, email, position, experience, existingPathCV } = req.body;
   const pathCV = req.file?.path || existingPathCV || "";
   const _id = req.params.id;
@@ -100,8 +112,11 @@ export const updateCandidate = async (req, res) => {
 
   console.log("[client:hiring] 🟡 Sending update payload:", payload);
 
+  const metadata = new Metadata();
+  metadata.add("authorization", `${req.headers.authorization}`);
+
   const response = await new Promise((resolve, reject) => {
-    client.UpdateCandidate(payload, (err, response) => {
+    client.UpdateCandidate(payload, metadata, (err, response) => {
       if (err) return reject(err);
       resolve(response);
     });
@@ -145,8 +160,11 @@ export const deleteCandidate = async (req, res) => {
 
   console.log("[client:hiring] 🟡 Request to delete candidate with ID:", id);
 
+  const metadata = new Metadata();
+  metadata.add("authorization", `${req.headers.authorization}`);
+
   const response = await new Promise((resolve, reject) => {
-    client.DeleteCandidate({ id }, (err, response) => {
+    client.DeleteCandidate({ id }, metadata, (err, response) => {
       if (err) return reject(err);
       resolve(response);
     });

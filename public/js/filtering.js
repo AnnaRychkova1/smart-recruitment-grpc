@@ -197,23 +197,21 @@ async function deleteFilteredCandidate(_id) {
 // Check is token valid
 function ensureValidToken() {
   const token = localStorage.getItem("token");
-  if (!token || isTokenExpired(token)) {
-    localStorage.removeItem("token");
-    localStorage.removeItem("name");
-    alert(
-      "⚠️ Your session has expired due to inactivity. Please sign in again."
-    );
-    window.location.href = "/signin";
-    return false;
-  }
-  return true;
-}
-function isTokenExpired(token) {
+
   try {
+    if (!token) throw new Error("No token");
+
     const payload = JSON.parse(atob(token.split(".")[1]));
     const currentTime = Math.floor(Date.now() / 1000);
-    return payload.exp < currentTime;
+
+    if (payload.exp < currentTime) throw new Error("Token expired");
+
+    return true; // Token is valid
   } catch (err) {
-    return true; // treat invalid tokens as expired
+    localStorage.removeItem("token");
+    localStorage.removeItem("name");
+    alert("⚠️ Your session has expired or is invalid. Please sign in again.");
+    window.location.href = "/signin";
+    return false;
   }
 }

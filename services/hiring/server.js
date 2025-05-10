@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import fetch from "node-fetch";
 import { Candidate } from "../../models/Candidate.js";
+import { verifyTokenFromCallMetadata } from "../../middleware/verifyTokenFromCallMetadata.js";
 
 dotenv.config();
 
@@ -27,6 +28,14 @@ const hiringProto = grpc.loadPackageDefinition(packageDef).hiring;
 
 // Function to add candidate
 async function AddCandidate(call, callback) {
+  // try {
+  verifyTokenFromCallMetadata(call);
+  // } catch (err) {
+  //   return callback({
+  //     code: grpc.status.UNAUTHENTICATED,
+  //     message: "Invalid or missing token.",
+  //   });
+  // }
   const candidate = call.request;
 
   try {
@@ -106,6 +115,14 @@ async function AddCandidate(call, callback) {
 
 // Function to handle retrieving all candidates
 async function GetAllCandidates(call) {
+  try {
+    verifyTokenFromCallMetadata(call);
+  } catch (err) {
+    return callback({
+      code: grpc.status.UNAUTHENTICATED,
+      message: "Invalid or missing token.",
+    });
+  }
   console.log("📤 Fetching candidates from DB...");
 
   try {
@@ -134,6 +151,14 @@ async function GetAllCandidates(call) {
 
 // Function to handle updating an existing candidate
 async function UpdateCandidate(call, callback) {
+  try {
+    verifyTokenFromCallMetadata(call);
+  } catch (err) {
+    return callback({
+      code: grpc.status.UNAUTHENTICATED,
+      message: "Invalid or missing token.",
+    });
+  }
   const toUpdate = call.request;
   try {
     // Basic validation
@@ -191,6 +216,14 @@ async function UpdateCandidate(call, callback) {
 
 // Function to handle deleting a candidate
 async function DeleteCandidate(call, callback) {
+  try {
+    verifyTokenFromCallMetadata(call);
+  } catch (err) {
+    return callback({
+      code: grpc.status.UNAUTHENTICATED,
+      message: "Invalid or missing token.",
+    });
+  }
   const { id } = call.request;
 
   try {

@@ -9,6 +9,7 @@ import mongoose from "mongoose";
 import { MongoClient } from "mongodb";
 import { Filtered } from "../../models/Filtered.js";
 import { analyzeCVWithAI } from "../../helpers/analyzeCVWithAI.js";
+import { verifyTokenFromCallMetadata } from "../../middleware/verifyTokenFromCallMetadata.js";
 
 dotenv.config();
 
@@ -40,6 +41,14 @@ const filteringProto = grpc.loadPackageDefinition(packageDef).filtering;
 
 // ---- FilterCandidates RPC Method ----
 async function FilterCandidates(call, callback) {
+  try {
+    verifyTokenFromCallMetadata(call);
+  } catch (err) {
+    return callback({
+      code: grpc.status.UNAUTHENTICATED,
+      message: "Invalid or missing token.",
+    });
+  }
   const { minExperience, maxExperience, position } = call.request;
   console.log("📥 Filtering candidates...", {
     minExperience,
@@ -118,6 +127,14 @@ async function FilterCandidates(call, callback) {
 
 // ---- DeleteCandidate RPC Method ----
 async function DeleteCandidate(call, callback) {
+  try {
+    verifyTokenFromCallMetadata(call);
+  } catch (err) {
+    return callback({
+      code: grpc.status.UNAUTHENTICATED,
+      message: "Invalid or missing token.",
+    });
+  }
   const { id } = call.request;
 
   try {

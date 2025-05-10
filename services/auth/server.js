@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import fetch from "node-fetch";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 import { User } from "../../models/User.js";
 
 dotenv.config();
@@ -25,6 +26,10 @@ const packageDef = protoLoader.loadSync(PROTO_PATH);
 const authProto = grpc.loadPackageDefinition(packageDef).auth;
 
 // gRPC Handlers
+
+function generateToken(payload) {
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
+}
 
 // Signup
 async function SignUp(call, callback) {
@@ -50,10 +55,11 @@ async function SignUp(call, callback) {
 
     const newUser = new User({ name, email, password: hashedPassword });
     await newUser.save();
+    const token = generateToken({ name, email });
 
     console.log("✅ User created successfully:", newUser);
 
-    callback(null, { name: newUser.name });
+    callback(null, { name: newUser.name, token });
   } catch (err) {
     console.error("❌ SignUp error:", err.message);
     callback({
@@ -89,9 +95,11 @@ async function SignIn(call, callback) {
       });
     }
 
+    const token = generateToken({ name: user.name, email });
+
     console.log("✅ Credentials are valid");
 
-    callback(null, { name: user.name });
+    callback(null, { name: user.name, token });
   } catch (err) {
     console.error("❌ SignIn error:", err.message);
     callback({

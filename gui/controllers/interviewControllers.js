@@ -1,3 +1,4 @@
+import { Metadata } from "@grpc/grpc-js";
 import { getGrpcClientForService } from "../utils/getGrpcClientForService.js";
 
 // 📅 Schedule interview (InterviewService)
@@ -14,8 +15,11 @@ export const scheduleInterviews = async (req, res) => {
     return res.status(400).json({ message: "Date is required for scheduling" });
   }
 
+  const metadata = new Metadata();
+  metadata.add("authorization", `${req.headers.authorization}`);
+
   const response = await new Promise((resolve, reject) => {
-    client.ScheduleInterviews({ date }, (err, response) => {
+    client.ScheduleInterviews({ date }, metadata, (err, response) => {
       if (err) return reject(err);
       resolve(response);
     });
@@ -53,8 +57,10 @@ export const updateInterview = async (req, res) => {
   const payload = { id, new_date, new_time };
   console.log("[client:interview] 🟡 Payload:", payload);
 
+  const metadata = new Metadata();
+  metadata.add("authorization", `${req.headers.authorization}`);
   const response = await new Promise((resolve, reject) => {
-    client.UpdateInterview(payload, (err, response) => {
+    client.UpdateInterview(payload, metadata, (err, response) => {
       if (err) return reject(err);
       resolve(response);
     });
@@ -86,8 +92,11 @@ export const deleteInterview = async (req, res) => {
     return res.status(400).json({ message: "Interview ID is required" });
   }
 
+  const metadata = new Metadata();
+  metadata.add("authorization", `${req.headers.authorization}`);
+
   const response = await new Promise((resolve, reject) => {
-    client.DeleteInterview({ id }, (err, response) => {
+    client.DeleteInterview({ id }, metadata, (err, response) => {
       if (err) return reject(err);
       resolve(response);
     });

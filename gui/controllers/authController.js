@@ -1,5 +1,4 @@
 import { getGrpcClientForService } from "../utils/getGrpcClientForService.js";
-import jwt from "jsonwebtoken";
 
 // Signup
 export const handleSignup = async (req, res, next) => {
@@ -21,15 +20,11 @@ export const handleSignup = async (req, res, next) => {
       });
     });
 
-    const token = jwt.sign({ email }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
-
-    console.log("📦 Received from backend:", response);
+    console.log("[client:auth]📦 Received from backend:", response);
 
     res.status(200).json({
       name: response.name,
-      token: token,
+      token: response.token,
     });
   } catch (err) {
     console.error("[client:auth] ❌ SignUp failed:", err.message);
@@ -51,13 +46,9 @@ export const handleSignin = async (req, res, next) => {
       });
     });
 
-    const token = jwt.sign({ email }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
-
     res.status(200).json({
       name: response.name,
-      token: token,
+      token: response.token,
     });
   } catch (err) {
     console.error("[client:auth] ❌ SignIn failed:", err.message);

@@ -87,12 +87,13 @@ Client uses **`/js/*.js`** scripts for AJAX communication with the services.
 ├── discovery             # gRPC service discovery logic
 ├── gui                   # Express-based HTTP interface (web client)
 │   ├── controllers       # Logic for handling incoming HTTP requests (view controllers)
-│   ├── middleware         # Custom Express middleware (authentication, validation, etc.)
+│   ├── middleware        # Custom Express middleware (authentication)
 │   ├── routes            # HTTP route definitions and mappings
 │   ├── utils             # Utility and helper functions for the GUI layer
 │   ├── views             # EJS templates rendered on the server side
 │   └── app.js            # Entry point for the Express web server
 ├── helpers               # AI helper functions (for candidate filtering)
+├── middleware            # Shared middleware for gRPC services (token verification)
 ├── models                # Mongoose schemas for MongoDB collections
 ├── proto                 # gRPC .proto interface definitions
 ├── public                # Static frontend assets (CSS, JS, images)
@@ -158,6 +159,11 @@ The Discovery service is run separately to ensure it starts **before** the other
 ---
 
 ### 🖼️ Demo & Screenshots
+
+#### Auth Service
+
+![POST /api/signup](./screenshots/Postman/Signup.png)
+![POST /api/signin](./screenshots/Postman/Signin.png)
 
 #### HiringService
 
