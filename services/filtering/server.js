@@ -8,7 +8,7 @@ import pdfParse from "pdf-parse";
 import mongoose from "mongoose";
 import { MongoClient } from "mongodb";
 import { Filtered } from "../../models/Filtered.js";
-import { analyzeCVWithAI } from "../../utils/analyzeCVWithAI.js";
+import { analyzeCVWithAI } from "../../helpers/analyzeCVWithAI.js";
 
 dotenv.config();
 

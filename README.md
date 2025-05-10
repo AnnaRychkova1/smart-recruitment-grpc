@@ -29,7 +29,6 @@ Handles user registration and login.
 - `POST /api/signup` – Create user
 - `POST /api/signin` – Log in user
 
-> Logout functionality is implemented only on the client side
 > 🔒 Passwords are securely hashed using **bcrypt** before being stored in the database.
 > 🔑 Upon login, users receive a **JWT (JSON Web Token)**, valid for **1 hour**, used for authenticated access to protected endpoints.
 > 🚪 Logout functionality is implemented only on the client side.
@@ -85,21 +84,26 @@ Client uses **`/js/*.js`** scripts for AJAX communication with the services.
 ## 📂 Project Structure
 
 ```bash
-├── controllers         # Express route handlers
-├── discovery           # gRPC service discovery
-├── gui
-│   ├── views           # EJS templates
-│   └── app.js          # Express GUI app
-├── middleware          # Authentication and utils
-├── models              # Mongoose schemas
-├── proto               # gRPC proto definitions
-├── public              # Static frontend files (CSS, JS, images)
-├── routes              # Route definitions
-├── services            # Microservices (auth, hiring, filtering, interview)
-├── uploads             # Uploaded CVs
-├── utils               # Helper functions
-├── .env                # Environment variables
-├── package.json
+├── discovery             # gRPC service discovery logic
+├── gui                   # Express-based HTTP interface (web client)
+│   ├── controllers       # Logic for handling incoming HTTP requests (view controllers)
+│   ├── middleware         # Custom Express middleware (authentication, validation, etc.)
+│   ├── routes            # HTTP route definitions and mappings
+│   ├── utils             # Utility and helper functions for the GUI layer
+│   ├── views             # EJS templates rendered on the server side
+│   └── app.js            # Entry point for the Express web server
+├── helpers               # AI helper functions (for candidate filtering)
+├── models                # Mongoose schemas for MongoDB collections
+├── proto                 # gRPC .proto interface definitions
+├── public                # Static frontend assets (CSS, JS, images)
+├── screenshots           # UI screenshots and demo images
+├── services              # gRPC microservices (auth, hiring, filtering, interview)
+├── uploads               # Uploaded CV/resume files
+├── .env                  # Environment variable definitions
+├── .gitignore            # Git ignored files and directories
+├── package.json          # Project metadata and dependencies
+├── package-lock.json     # Exact versions of installed dependencies
+└── README.md             # Project documentation
 ```
 
 ---

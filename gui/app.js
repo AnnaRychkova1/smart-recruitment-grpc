@@ -4,13 +4,13 @@ import path from "path";
 import dotenv from "dotenv";
 import cors from "cors";
 
-import mainRoutes from "../routes/mainRoutes.js";
-import hiringRoutes from "../routes/hiringRoutes.js";
-import filteringRoutes from "../routes/filteringRoutes.js";
-import interviewRoutes from "../routes/interviewRoutes.js";
-import authRoutes from "../routes/authRoutes.js";
+import mainRoutes from "./routes/mainRoutes.js";
+import hiringRoutes from "./routes/hiringRoutes.js";
+import filteringRoutes from "./routes/filteringRoutes.js";
+import interviewRoutes from "./routes/interviewRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
 
-import { errorHandler } from "../middlware/errorHandler.js";
+import { errorHandler } from "./middleware/errorHandler.js";
 
 dotenv.config();
 

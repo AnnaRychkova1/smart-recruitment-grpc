@@ -1,7 +1,10 @@
 // filtering.js
 
 document.addEventListener("DOMContentLoaded", () => {
-  if (!ensureValidToken()) return;
+  const token = localStorage.getItem("token");
+  if (!token || token === null) {
+    window.location.href = "/signin";
+  }
   const userWelcome = document.getElementById("user-welcome");
   const userNameWelcome = localStorage.getItem("name");
   userWelcome.textContent = `Hi ${userNameWelcome}`;

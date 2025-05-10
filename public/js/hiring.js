@@ -2,7 +2,10 @@ let candidatesVisible = false;
 
 // Initialize event listeners after DOM is fully loaded
 document.addEventListener("DOMContentLoaded", () => {
-  if (!ensureValidToken()) return;
+  const token = localStorage.getItem("token");
+  if (!token || token === null) {
+    window.location.href = "/signin";
+  }
   const showFormBtn = document.getElementById("show-form-btn");
   const showListBtn = document.getElementById("show-list-btn");
 

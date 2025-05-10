@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { authenticateToken } from "../middlware/authenticate.js";
+import { authenticateToken } from "../middleware/authenticate.js";
 import {
   deleteFiltered,
   filteringCandidates,

@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { upload } from "../middlware/uploadMiddleware.js";
+import { upload } from "../middleware/uploadMiddleware.js";
+import { authenticateToken } from "../middleware/authenticate.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { authenticateToken } from "../middlware/authenticate.js";
 
 import {
   addCandidate,
