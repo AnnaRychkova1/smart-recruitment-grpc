@@ -1,6 +1,6 @@
 # 🧠 Smart Recruitment System (Node.js + Express + gRPC + EJS)
 
-Welcome to the Smart Recruitment System — a distributed application for managing the full recruitment pipeline: candidate registration, AI-filtering, scheduling interviews, and user authentication. It leverages **Node.js**, **gRPC**, **Express**, and **MongoDB**, with a **dynamic EJS frontend**.
+Welcome to the Smart Recruitment System — a distributed application for managing the full recruitment pipeline: candidate registration, AI-adding, AI-filtering, scheduling interviews, and user authentication. It leverages **Node.js**, **gRPC**, **Express**, and **MongoDB**, with a **dynamic EJS frontend**.
 
 ---
 
@@ -40,6 +40,7 @@ Handles user registration and login.
 CRUD operations for candidates, including CV upload.
 
 - `POST /add-candidate` – Add candidate
+- `POST /bulk-add-candidates` – Upload multiple candidate CVs. Each CV is parsed and analyzed using AI to automatically extract structured data (name, email, position, experience) before saving to the database.
 - `GET /get-candidates` – Get all candidates
 - `PUT /update-candidate/:id` – Edit candidate
 - `DELETE /delete-candidate/:id` – Remove candidate
@@ -168,6 +169,7 @@ The Discovery service is run separately to ensure it starts **before** the other
 #### HiringService
 
 ![POST /add-candidate](./screenshots/Postman/AddCandidate.png)
+![POST /bulk-add-candidates](./screenshots/Postman/AddManyCandidates.png)
 ![GET /get-candidates](./screenshots/Postman/GetCandidates.png)
 ![PUT /update-candidate/:id](./screenshots/Postman/UpdateCandidate.png)
 ![DELETE /delete-candidate/:id](./screenshots/Postman/DeleteCandidate.png)
@@ -196,6 +198,7 @@ Visit [http://localhost:3000](http://localhost:3000) in your browser.
 
 - 🔒 User Authentication (Signup, Login, JWT)
 - 📥 Add/Edit/Delete Candidates with CV upload
+- 🤖 Bulk upload candidate CVs with automatic data extraction powered by AI
 - 🔍 Filter candidates by experience and position
 - 📅 Schedule and manage interview dates
 - 📂 Fully modular architecture using gRPC

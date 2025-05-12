@@ -3,8 +3,12 @@ syntax = "proto3";
 package hiring;
 
 service HiringService {
+
   // Simple RPC
   rpc AddCandidate (CandidateRequest) returns (AddResponse);
+
+  // Client Streaming RPC
+  rpc AddManyCandidates (stream pathCV) returns (AddManyResponse);
 
   // Server Streaming RPC
   rpc GetAllCandidates (Empty) returns (stream Candidate);
@@ -22,6 +26,10 @@ message CandidateRequest {
   string position = 3;
   int32 experience = 4;
   string pathCV = 5;
+}
+
+message pathCV {
+  string pathCV = 1;
 }
 
 message UpdateRequest {
@@ -46,6 +54,11 @@ message AddResponse {
   int32 status = 1; 
   string message = 2;
   Candidate candidate = 3;
+}
+
+message AddManyResponse {
+  int32 addedCount = 1;
+  string message = 2;
 }
 
 message UpdateResponse {

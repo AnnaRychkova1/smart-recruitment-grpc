@@ -1,5 +1,7 @@
 import { Metadata } from "@grpc/grpc-js";
 import { getGrpcClientForService } from "../utils/getGrpcClientForService.js";
+import fs from "fs";
+import path from "path";
 
 // 🔁 Add candidate (HiringService)
 export const addCandidate = async (req, res) => {
@@ -57,6 +59,62 @@ export const addCandidate = async (req, res) => {
     message: response.message,
     candidate: response.candidate,
   });
+};
+
+// 🔁 Add many candidates (HiringService)
+export const AddManyCandidates = async (req, res) => {
+  console.log("[client:hiring] 🟡 Starting to add multiple candidates...");
+
+  const client = await getGrpcClientForService("HiringService");
+
+  const files = req.files;
+  if (!files?.length) {
+    return res.status(400).json({ message: "No CV files provided." });
+  }
+
+  const pathsCV = files.map((file) => file.path);
+  console.log("[client:hiring] 🟡 Received file paths:", pathsCV);
+
+  if (!Array.isArray(pathsCV) || pathsCV.length === 0) {
+    return res
+      .status(400)
+      .json({ message: "pathsCV must be a non-empty array" });
+  }
+
+  // gRPC metadata with token
+  const metadata = new Metadata();
+  metadata.add("authorization", `${req.headers.authorization}`);
+
+  try {
+    const response = await new Promise((resolve, reject) => {
+      const stream = client.AddManyCandidates(metadata, (err, response) => {
+        if (err) return reject(err);
+        resolve(response);
+      });
+
+      for (const singlePath of pathsCV) {
+        console.log(`[client:hiring] 📤 Sending pathCV: ${singlePath}`);
+        stream.write({ pathCV: singlePath });
+      }
+
+      stream.end();
+    });
+
+    console.log("[client:hiring] 🟢 Stream completed:", response);
+
+    return res.status(200).json({
+      addedCount: response.addedCount,
+      message: response.message,
+    });
+  } catch (err) {
+    console.error(
+      "[client:hiring] 🔴 Failed to add candidates via stream:",
+      err
+    );
+    return res
+      .status(500)
+      .json({ message: "Failed to add candidates via stream." });
+  }
 };
 
 // 📥 Get candidates (HiringService)

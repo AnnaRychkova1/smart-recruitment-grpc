@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 import fetch from "node-fetch";
 import { Candidate } from "../../models/Candidate.js";
 import { verifyTokenFromCallMetadata } from "../../middleware/verifyTokenFromCallMetadata.js";
+import { analyzeCVAndExtractCandidate } from "../../helpers/analyzeCVAndExtractCandidate.js";
 
 dotenv.config();
 
@@ -111,6 +112,88 @@ async function AddCandidate(call, callback) {
       candidate: null,
     });
   }
+}
+
+// Add many candidates (via stream of pathCVs only)
+async function AddManyCandidates(call, callback) {
+  try {
+    verifyTokenFromCallMetadata(call);
+  } catch (err) {
+    return callback({
+      code: grpc.status.UNAUTHENTICATED,
+      message: "Invalid or missing token.",
+    });
+  }
+
+  console.log("📥 Starting AddManyCandidates stream...");
+
+  const insertedCandidates = [];
+  const failed = [];
+  const savePromises = [];
+
+  call.on("data", (candidateChunk) => {
+    const { pathCV } = candidateChunk;
+
+    console.log("📄 Received pathCV:", pathCV);
+
+    if (!pathCV) {
+      console.warn("⚠️ Skipping candidate without pathCV.");
+      failed.push({ error: "Missing pathCV", pathCV });
+      return;
+    }
+
+    const savePromise = (async () => {
+      try {
+        // const newCandidate = new Candidate({
+        //   pathCV,
+        //   name: "Unnamed",
+        //   email: "unknown@example.com",
+        //   position: "Unknown",
+        //   experience: 0,
+        // });
+        const candidateData = await analyzeCVAndExtractCandidate(pathCV);
+
+        const newCandidate = new Candidate({
+          ...candidateData,
+          pathCV,
+        });
+
+        const saved = await newCandidate.save();
+        console.log(`✅ Saved candidate with CV: ${saved.pathCV}`);
+        insertedCandidates.push(saved);
+      } catch (err) {
+        console.error(
+          `❌ Failed to save candidate with CV: ${pathCV}`,
+          err.message
+        );
+        failed.push({ error: err.message, pathCV });
+      }
+    })();
+
+    savePromises.push(savePromise);
+  });
+
+  call.on("end", async () => {
+    await Promise.all(savePromises);
+
+    const addedCount = insertedCandidates.length;
+    console.log(
+      `🟢 Stream ended. Inserted: ${addedCount}, Failed: ${failed.length}`
+    );
+
+    callback(null, {
+      addedCount,
+      message: `Processed ${addedCount} candidates. ${failed.length} failed.`,
+    });
+  });
+
+  call.on("error", (err) => {
+    console.error("❌ Stream error during AddManyCandidates:", err.message);
+    callback({
+      code: grpc.status.INTERNAL,
+      message: "Internal error during AddManyCandidates stream.",
+    });
+  });
 }
 
 // Function to handle retrieving all candidates
@@ -259,6 +342,7 @@ const server = new grpc.Server();
 // Add the HiringService with its methods to the server
 server.addService(hiringProto.HiringService.service, {
   AddCandidate,
+  AddManyCandidates,
   GetAllCandidates,
   UpdateCandidate,
   DeleteCandidate,

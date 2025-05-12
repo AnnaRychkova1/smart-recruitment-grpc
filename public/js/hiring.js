@@ -39,6 +39,59 @@ document.addEventListener("DOMContentLoaded", () => {
       updateCandidate();
     });
   }
+
+  const bulkCVButton = document.getElementById("add-many-candidates");
+  const bulkCVInput = document.getElementById("bulk-cv-upload");
+
+  if (bulkCVButton && bulkCVInput) {
+    bulkCVButton.addEventListener("click", () => bulkCVInput.click());
+
+    bulkCVInput.addEventListener("change", async (event) => {
+      if (!ensureValidToken()) return;
+
+      const files = Array.from(event.target.files);
+
+      if (files.length === 0) return;
+
+      const token = localStorage.getItem("token");
+
+      const formData = new FormData();
+      files.forEach((file, index) => {
+        if (file.type !== "application/pdf") {
+          alert(`⚠️ ${file.name} is not a PDF. Skipping.`);
+          return;
+        }
+        formData.append("pathCV", file); // key name 'pathCV' must match backend expectation
+      });
+
+      try {
+        const response = await fetch("/bulk-add-candidates", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          alert(`❌ Server error: ${result.message}`);
+        } else {
+          alert(`✅ ${result.message}`);
+          if (candidatesVisible) {
+            await toggleCandidateList();
+          }
+        }
+      } catch (err) {
+        console.error("❌ Upload error:", err);
+        alert("❌ Failed to upload CVs. Please try again.");
+      }
+
+      // Clear input so it can re-trigger even with same files
+      bulkCVInput.value = "";
+    });
+  }
 });
 
 // Toggle between showing and hiding all candidates

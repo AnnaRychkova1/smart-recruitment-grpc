@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { upload } from "../middleware/uploadMiddleware.js";
+import {
+  uploadSingle,
+  uploadMultiple,
+} from "../middleware/uploadMiddleware.js";
 import { authenticateToken } from "../middleware/authenticate.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -8,6 +11,7 @@ import {
   getCandidates,
   updateCandidate,
   deleteCandidate,
+  AddManyCandidates,
 } from "../controllers/hiringController.js";
 
 const router = Router();
@@ -15,13 +19,20 @@ const router = Router();
 router.post(
   "/add-candidate",
   authenticateToken,
-  upload.single("pathCV"),
+  uploadSingle.single("pathCV"),
   asyncHandler(addCandidate)
+);
+
+router.post(
+  "/bulk-add-candidates",
+  authenticateToken,
+  uploadMultiple.array("pathCV", 10),
+  asyncHandler(AddManyCandidates)
 );
 router.get("/get-candidates", authenticateToken, asyncHandler(getCandidates));
 router.put(
   "/update-candidate/:id",
-  upload.single("pathCV"),
+  uploadSingle.single("pathCV"),
   authenticateToken,
   asyncHandler(updateCandidate)
 );
