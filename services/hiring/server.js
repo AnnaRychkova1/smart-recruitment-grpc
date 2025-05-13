@@ -29,26 +29,26 @@ const hiringProto = grpc.loadPackageDefinition(packageDef).hiring;
 
 // Function to add candidate
 async function AddCandidate(call, callback) {
-  // try {
-  verifyTokenFromCallMetadata(call);
-  // } catch (err) {
-  //   return callback({
-  //     code: grpc.status.UNAUTHENTICATED,
-  //     message: "Invalid or missing token.",
-  //   });
-  // }
+  try {
+    verifyTokenFromCallMetadata(call);
+  } catch (err) {
+    return callback({
+      code: grpc.status.UNAUTHENTICATED,
+      message: "Invalid or missing token.",
+    });
+  }
+
   const candidate = call.request;
 
   try {
     // const existing = await candidatesCollection.findOne({ email: candidate.email });
     // if (existing) {
-    //   return callback(null, {
-    //     status: 409,
+    //   return callback({
+    //     code: grpc.status.ALREADY_EXISTS,
     //     message: "Conflict: Candidate with this ID already exists.",
     //     candidate: existing,
     //   });
     // }
-
     if (
       !candidate.name ||
       !candidate.email ||
@@ -56,58 +56,43 @@ async function AddCandidate(call, callback) {
       candidate.experience < 0 ||
       !candidate.pathCV
     ) {
-      return callback(
-        {
-          status: 400, // 400 Bad Request
-          message:
-            "Bad Request: All fields (id, name, email, position, experience, pathCV) are required.",
-          candidate: null,
-        },
-
-        null
-      );
+      return callback({
+        code: grpc.status.INVALID_ARGUMENT, // 400 Bad Request
+        message:
+          "Bad Request: All fields (name, email, position, experience, pathCV) are required.",
+        candidate: null,
+      });
     }
 
     if (typeof candidate.experience !== "number" || candidate.experience < 0) {
-      return callback(
-        {
-          status: 422, // 422 Unprocessable Entity
-          message:
-            "Unprocessable Entity: Experience must be a positive number.",
-          candidate: null,
-        },
-        null
-      );
+      return callback({
+        code: grpc.status.INVALID_ARGUMENT, // 400 Bad Request
+        message: "Unprocessable Entity: Experience must be a positive number.",
+        candidate: null,
+      });
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(candidate.email)) {
-      return callback(
-        {
-          status: 422, // 422 Unprocessable Entity
-          message: "Unprocessable Entity: Invalid email format.",
-          candidate: null,
-        },
-        null
-      );
+      return callback({
+        code: grpc.status.INVALID_ARGUMENT, // 400 Bad Request
+        message: "Unprocessable Entity: Invalid email format.",
+        candidate: null,
+      });
     }
 
-    // Add candidate to DB
     const newCandidate = new Candidate(candidate);
     await newCandidate.save();
-    // await candidatesCollection.insertOne(candidate);
     console.log(`📥 Candidate ${candidate.name} added to DB`);
 
-    // Response
     callback(null, {
-      status: 201, // 201 Created
       message: `📥 Candidate ${candidate.name} created successfully.`,
       candidate: newCandidate.toObject(),
     });
   } catch (err) {
     console.error("❌ DB Insert Error:", err.message);
-    callback(null, {
-      status: 500,
+    callback({
+      code: grpc.status.INTERNAL, // 500 Internal Server Error
       message: "Internal Server Error: Unable to add candidate.",
       candidate: null,
     });
@@ -235,7 +220,9 @@ async function UpdateCandidate(call, callback) {
       message: "Invalid or missing token.",
     });
   }
+
   const toUpdate = call.request;
+
   try {
     // Basic validation
     if (
@@ -246,10 +233,9 @@ async function UpdateCandidate(call, callback) {
       typeof toUpdate.experience !== "number" ||
       toUpdate.experience < 0
     ) {
-      return callback(null, {
-        status: 400,
+      return callback({
+        code: grpc.status.INVALID_ARGUMENT, // 400 - Bad Request
         message: "Bad Request: All fields must be provided and valid.",
-        candidate: null,
       });
     }
 
@@ -266,26 +252,23 @@ async function UpdateCandidate(call, callback) {
     );
 
     if (!updatedCandidate) {
-      return callback(null, {
-        status: 404,
+      return callback({
+        code: grpc.status.NOT_FOUND, // 404 - Not Found
         message: `Not Found: Candidate with ID ${toUpdate._id} does not exist.`,
-        candidate: null,
       });
     }
 
     console.log(`✏️ Candidate ${updatedCandidate.name} updated successfully.`);
 
     callback(null, {
-      status: 200,
       message: `Candidate ${updatedCandidate.name} updated successfully.`,
       candidate: updatedCandidate.toObject(),
     });
   } catch (err) {
     console.error("❌ DB Update Error:", err.message);
-    callback(null, {
-      status: 500,
+    callback({
+      code: grpc.status.INTERNAL, // 500 - Internal Server Error
       message: "Internal Server Error: Unable to update candidate.",
-      candidate: null,
     });
   }
 }

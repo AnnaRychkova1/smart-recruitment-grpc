@@ -2,6 +2,7 @@ import { Metadata } from "@grpc/grpc-js";
 import { getGrpcClientForService } from "../utils/getGrpcClientForService.js";
 
 // 🔁 Add candidate (HiringService)
+
 export const addCandidate = async (req, res) => {
   console.log("[client:hiring] 🟡 Starting to add a candidate...");
 
@@ -33,27 +34,28 @@ export const addCandidate = async (req, res) => {
       },
       metadata,
       (err, response) => {
-        if (err) return reject(err);
-        resolve(response);
+        if (err) return reject(err); // Reject if there is an error from the gRPC call
+        resolve(response); // Resolve with the response from gRPC
       }
     );
   });
 
-  console.log(response);
+  // Log the raw response for debugging purposes
+  console.log("gRPC response:", response);
 
-  if (!response || !response.candidate) {
-    const error = new Error("No candidate data received from service.");
-    error.statusCode = 502;
-    throw error;
+  // Handle the response based on status
+  if (!response || !response.candidate || !response.message) {
+    console.log(
+      "[client:hiring] ❌ Error adding candidate:",
+      response?.message
+    );
+    return res.status(400).json({
+      message:
+        response?.message || "Error occurred while adding the candidate.",
+    });
   }
 
-  console.log(
-    "[client:hiring] 🟢 Candidate added successfully:",
-    response.candidate
-  );
-
-  return res.json({
-    status: response.status,
+  return res.status(200).json({
     message: response.message,
     candidate: response.candidate,
   });
@@ -178,28 +180,18 @@ export const updateCandidate = async (req, res) => {
     });
   });
 
-  if (!response) {
-    const error = new Error("No response from hiring service");
-    error.statusCode = 502;
-    throw error;
-  }
-
   console.log("[client:hiring] 🟢 UpdateCandidate response:", response);
 
-  // Map gRPC status to HTTP status
-  switch (response.status) {
-    case 400:
-      return res.status(400).json({ message: response.message });
-    case 404:
-      return res.status(404).json({ message: response.message });
-    case 200:
-      return res.status(200).json({
-        message: response.message,
-        candidate: response.candidate,
-      });
-    default:
-      return res.status(500).json({ message: "Unexpected response status" });
+  if (!response || !response.candidate || !response.message) {
+    return res.status(400).json({
+      message:
+        response?.message || "Error occurred while updating the candidate.",
+    });
   }
+  return res.status(200).json({
+    message: response.message,
+    candidate: response.candidate,
+  });
 };
 
 // 🗑️ Delete candidate
@@ -226,10 +218,10 @@ export const deleteCandidate = async (req, res) => {
     });
   });
 
-  if (!response || !response.id) {
-    const error = new Error("No response from hiring service");
-    error.statusCode = 502;
-    throw error;
+  if (!response || !response.id || !response.message) {
+    return res.status(400).json({
+      message: response?.message || "Candidate not deleted or not found.",
+    });
   }
 
   console.log("[client:hiring] 🟢 Candidate deleted successfully:", response);

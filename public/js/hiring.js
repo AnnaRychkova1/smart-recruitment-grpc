@@ -113,7 +113,6 @@ async function toggleCandidateList() {
   const token = localStorage.getItem("token");
 
   try {
-    // const response = await fetch("/get-candidates");
     const response = await fetch("/get-candidates", {
       method: "GET",
       headers: {
@@ -254,7 +253,7 @@ async function submitCandidateForm() {
     });
     const result = await response.json();
 
-    if (!response.ok || result.status !== 201) {
+    if (!response.ok) {
       alert(`❌ Error ${result.status}: ${result.message}`);
       return;
     }
@@ -357,17 +356,10 @@ async function updateCandidate() {
 
     const result = await response.json();
 
-    if (response.status === 200) {
-      // alert(`✅ Candidate ${result.candidate.name} updated successfully.`);
+    if (response.ok) {
       alert(`✅ ${result.message}`);
 
       await toggleCandidateList(); // Refresh the list to reflect changes
-    } else if (response.status === 400) {
-      alert("⚠️ Invalid data: " + result.message);
-    } else if (response.status === 404) {
-      alert("❌ Candidate not found: " + result.message);
-    } else if (response.status === 500) {
-      alert("❌ Server error: " + result.message);
     } else {
       alert("❌ Unknown error: " + (result.message || "No details."));
     }

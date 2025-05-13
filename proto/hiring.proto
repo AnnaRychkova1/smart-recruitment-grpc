@@ -51,9 +51,8 @@ message Candidate {
 }
 
 message AddResponse {
-  int32 status = 1; 
-  string message = 2;
-  Candidate candidate = 3;
+  string message = 1;
+  Candidate candidate = 2;
 }
 
 message AddManyResponse {
@@ -61,10 +60,9 @@ message AddManyResponse {
   string message = 2;
 }
 
-message UpdateResponse {
-  int32 status = 1; 
-  string message = 2;
-  Candidate candidate = 3;
+message UpdateResponse { 
+  string message = 1;
+  Candidate candidate = 2;
 }
 
 message DeleteRequest {

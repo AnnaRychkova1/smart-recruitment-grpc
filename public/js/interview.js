@@ -267,8 +267,16 @@ async function deleteInterview(id) {
     const toDelete = String(result.id);
 
     if (result.id) {
-      deleteInterviewFromDom(toDelete);
       alert("🗑️ Interview deleted.");
+      deleteInterviewFromDom(toDelete);
+      const interviews = JSON.parse(localStorage.getItem("interviews")) || [];
+      const updatedInterviews = interviews.filter(
+        (interview) => interview.id !== id
+      );
+      localStorage.setItem(
+        "scheduledInterviews",
+        JSON.stringify(updatedInterviews)
+      );
     } else {
       alert(`${result.message}`);
     }

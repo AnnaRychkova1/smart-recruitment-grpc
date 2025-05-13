@@ -154,7 +154,6 @@ async function UpdateInterview(call, callback) {
   if (!id || !newDate || !newTime) {
     console.warn("⚠️ Missing required fields.");
     return callback(null, {
-      status: 400,
       message: "All fields (id, newDate, newTime) are required.",
       updated: null,
     });
@@ -177,8 +176,8 @@ async function UpdateInterview(call, callback) {
         (interviewEnd > existingStart && interviewEnd <= existingEnd)
       ) {
         console.warn("⚠️ Time conflict detected.");
-        return callback(null, {
-          status: 400,
+        return callback({
+          code: grpc.status.ALREADY_EXISTS,
           message:
             "The interview time overlaps with an existing interview. Please ensure there is at least one hour between interviews.",
           updated: null,
@@ -194,8 +193,8 @@ async function UpdateInterview(call, callback) {
 
     if (!interview) {
       console.warn("⚠️ Interview not found.");
-      return callback(null, {
-        status: 404,
+      return callback({
+        code: grpc.status.NOT_FOUND,
         message: `Interview with ID ${id} not found.`,
         updated: null,
       });
@@ -203,7 +202,6 @@ async function UpdateInterview(call, callback) {
 
     console.log(`✅ Interview ${id} updated to ${newDate} ${newTime}`);
     callback(null, {
-      status: 200,
       message: `Interview updated successfully.`,
       updated: {
         _id: interview.id.toString(),
@@ -214,8 +212,8 @@ async function UpdateInterview(call, callback) {
     });
   } catch (err) {
     console.error("❌ UpdateInterview Error:", err.message);
-    callback(null, {
-      status: 500,
+    callback({
+      code: grpc.status.INTERNAL,
       message: "Error while updating interview.",
       updated: null,
     });
