@@ -65,7 +65,8 @@ Filter and clean candidate lists.
 Schedule, edit, and remove interviews.
 
 - `POST /schedule-interviews` – Schedule interviews for the selected date with filtered candidates (candidate data is fetched directly from the server-side database) and retrieve the full interview schedule.
-- `PUT /update-interview/:id` – Reschedule
+- `POST /reschedule-interviews` – Reschedule all interview
+- `PUT /update-interview/:id` – Change one interview
 - `DELETE /delete-interview/:id` – Cancel interview
 
 ---
@@ -183,6 +184,7 @@ The Discovery service is run separately to ensure it starts **before** the other
 
 ![POST /schedule-interviews](./screenshots/Postman/ScheduleInterviews.png)
 ![POST /schedule-interviews](./screenshots/Postman/ScheduleInterviews1.png)
+![POST /reschedule-interviews](./screenshots/Postman/StreamAndReschedule.png)
 ![PUT /update-interview/:id](./screenshots/Postman/UpdateInterview.png)
 ![DELETE /delete-interview/:id](./screenshots/Postman/DeleteInterview.png)
 
@@ -200,7 +202,7 @@ Visit [http://localhost:3000](http://localhost:3000) in your browser.
 - 📥 Add/Edit/Delete Candidates with CV upload
 - 🤖 Bulk upload candidate CVs with automatic data extraction powered by AI
 - 🔍 Filter candidates by experience and position
-- 📅 Schedule and manage interview dates
+- 📅 Schedule and manage interview dates, reschedule
 - 📂 Fully modular architecture using gRPC
 
 ---

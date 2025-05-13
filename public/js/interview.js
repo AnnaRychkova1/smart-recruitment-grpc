@@ -9,6 +9,11 @@ document.addEventListener("DOMContentLoaded", () => {
     scheduleBtn.addEventListener("click", scheduleInterview);
   }
 
+  const rescheduleBtn = document.getElementById("reschedule-btn");
+  if (rescheduleBtn) {
+    rescheduleBtn.addEventListener("click", rescheduleInterviews);
+  }
+
   // Handle the form submission for editing an interview
   const editForm = document.getElementById("edit-interview-form");
   if (editForm) {
@@ -26,6 +31,7 @@ async function scheduleInterview() {
   const showFilteredCandidates = document.getElementById(
     "show-filtered-candidates"
   );
+  const rescheduleBtn = document.getElementById("reschedule-btn");
   const filterSection = document.getElementById("filter-section");
   const addSection = document.getElementById("add-section");
   const dateInput = document.getElementById("interview-date");
@@ -70,6 +76,9 @@ async function scheduleInterview() {
     const result = await response.json();
 
     const scheduled = result.scheduled;
+    rescheduleBtn.style.display = "block";
+    rescheduleBtn.style.marginBottom = "16px";
+    localStorage.setItem("scheduledInterviews", JSON.stringify(scheduled));
 
     const tableBody = document.getElementById("schedule-body");
     tableBody.innerHTML = "";
@@ -79,6 +88,13 @@ async function scheduleInterview() {
       return;
     }
     filterSection.style.display = "none";
+
+    scheduled.sort((a, b) => {
+      const dateTimeA = new Date(`${a.date}T${a.time}:00`);
+      const dateTimeB = new Date(`${b.date}T${b.time}:00`);
+      return dateTimeA - dateTimeB;
+    });
+
     scheduled.forEach((entry) => {
       const row = document.createElement("tr");
       row.setAttribute("data-id", entry._id);
@@ -315,5 +331,75 @@ function ensureValidToken() {
     alert("⚠️ Your session has expired or is invalid. Please sign in again.");
     window.location.href = "/signin";
     return false;
+  }
+}
+
+async function rescheduleInterviews() {
+  if (!ensureValidToken()) return;
+  const rescheduleBtn = document.getElementById("reschedule-btn");
+  const filterSection = document.getElementById("filter-section");
+  const messageBox = document.getElementById("schedule-message");
+  rescheduleBtn.style.display = "block";
+
+  const token = localStorage.getItem("token");
+
+  const interviews = JSON.parse(
+    localStorage.getItem("scheduledInterviews") || "[]"
+  );
+
+  try {
+    const response = await fetch("/reschedule-interviews", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        interviews,
+      }),
+    });
+
+    const result = await response.json();
+    localStorage.removeItem("scheduledInterviews");
+
+    const scheduled = result.scheduled;
+    localStorage.setItem("scheduledInterviews", JSON.stringify(scheduled));
+
+    const tableBody = document.getElementById("schedule-body");
+    tableBody.innerHTML = "";
+
+    if (scheduled.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="4">No scheduled interviews.</td></tr>`;
+      return;
+    }
+    filterSection.style.display = "none";
+    scheduled.sort((a, b) => {
+      const dateTimeA = new Date(`${a.date}T${a.time}:00`);
+      const dateTimeB = new Date(`${b.date}T${b.time}:00`);
+      return dateTimeA - dateTimeB;
+    });
+    scheduled.forEach((entry) => {
+      const row = document.createElement("tr");
+      row.setAttribute("data-id", entry._id);
+      row.innerHTML = `
+        <td>${entry.name}</td>
+        <td>${entry.date}</td>
+        <td>${entry.time}</td>
+        <td>
+          <button class="action-btn" onclick='editInterview(${JSON.stringify(
+            entry
+          )})'>✏️ Edit</button>
+          <button class="action-btn" onclick="deleteInterview('${
+            entry._id
+          }')">🗑️ Delete</button>
+        </td>
+      `;
+      tableBody.appendChild(row);
+    });
+    alert("✅ Interviews successfully rescheduled!");
+    messageBox.innerHTML = `<strong>${result.message}</strong>`;
+  } catch (err) {
+    console.error("❌ Failed to reschedule interviews:", err);
+    alert("❌ Scheduling failed.");
   }
 }

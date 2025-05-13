@@ -8,6 +8,9 @@ service InterviewService {
   // Schedule interviews for filtered candidates on a specific date
   rpc ScheduleInterviews (ScheduleRequest) returns (ScheduleResponse);
 
+  // Bi-directional streaming: client streams interviews, server responds with modified versions
+  rpc StreamAndReschedule (stream ScheduledInterview) returns (stream ScheduledInterview);
+
   // Edit an existing interview by ID
   rpc UpdateInterview (UpdateRequest) returns (UpdateResponse);
 

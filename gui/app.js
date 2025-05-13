@@ -42,5 +42,3 @@ const PORT = process.env.CLIENT_PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Client GUI running on http://localhost:${PORT}`);
 });
-
-app.js;

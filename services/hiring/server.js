@@ -13,7 +13,7 @@ dotenv.config();
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
-    console.log("✅ Connected to MongoDB Atlas");
+    console.log("🔌 Connecting to MongoDB...");
   } catch (error) {
     console.error("❌ MongoDB connection error:", error);
     throw error;
@@ -144,13 +144,6 @@ async function AddManyCandidates(call, callback) {
 
     const savePromise = (async () => {
       try {
-        // const newCandidate = new Candidate({
-        //   pathCV,
-        //   name: "Unnamed",
-        //   email: "unknown@example.com",
-        //   position: "Unknown",
-        //   experience: 0,
-        // });
         const candidateData = await analyzeCVAndExtractCandidate(pathCV);
 
         const newCandidate = new Candidate({

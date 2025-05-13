@@ -1,7 +1,5 @@
 import { Metadata } from "@grpc/grpc-js";
 import { getGrpcClientForService } from "../utils/getGrpcClientForService.js";
-import fs from "fs";
-import path from "path";
 
 // 🔁 Add candidate (HiringService)
 export const addCandidate = async (req, res) => {
@@ -62,7 +60,7 @@ export const addCandidate = async (req, res) => {
 };
 
 // 🔁 Add many candidates (HiringService)
-export const AddManyCandidates = async (req, res) => {
+export const addManyCandidates = async (req, res) => {
   console.log("[client:hiring] 🟡 Starting to add multiple candidates...");
 
   const client = await getGrpcClientForService("HiringService");

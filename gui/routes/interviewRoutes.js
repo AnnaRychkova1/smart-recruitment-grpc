@@ -5,6 +5,7 @@ import {
   deleteInterview,
   scheduleInterviews,
   updateInterview,
+  rescheduleInterviews,
 } from "../controllers/interviewControllers.js";
 
 const router = Router();
@@ -13,6 +14,12 @@ router.post(
   "/schedule-interviews",
   authenticateToken,
   asyncHandler(scheduleInterviews)
+);
+
+router.post(
+  "/reschedule-interviews",
+  authenticateToken,
+  asyncHandler(rescheduleInterviews)
 );
 router.put(
   "/update-interview/:id",

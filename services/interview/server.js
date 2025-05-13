@@ -265,6 +265,95 @@ async function DeleteInterview(call, callback) {
   }
 }
 
+// ---- Reschedule  RPC Method ----
+
+async function StreamAndReschedule(call) {
+  console.log("📨 Received StreamAndReschedule RPC");
+
+  try {
+    verifyTokenFromCallMetadata(call);
+    console.log("🔑 Token verified");
+  } catch (err) {
+    console.warn("🚫 Unauthorized Stream attempt");
+    call.emit("error", {
+      code: grpc.status.UNAUTHENTICATED,
+      message: "Invalid or missing token.",
+    });
+    return;
+  }
+
+  const savePromises = [];
+  await Interview.deleteMany({});
+  console.log("🧹 Cleared previously scheduled interviews.");
+
+  const timeMap = {};
+
+  call.on("data", (interviewChunk) => {
+    console.log("📄 Received Interview Chunk:", interviewChunk);
+
+    const interview = interviewChunk;
+
+    const savePromise = (async () => {
+      try {
+        const interviewDate = interview.date;
+
+        const availableHours = [];
+        for (let hour = 9; hour < 18; hour++) {
+          if (hour !== 13) {
+            availableHours.push(hour);
+          }
+        }
+
+        if (!timeMap[interviewDate]) {
+          timeMap[interviewDate] = new Set();
+        }
+
+        const takenHours = timeMap[interviewDate];
+        const freeHours = availableHours.filter(
+          (hour) => !takenHours.has(hour)
+        );
+
+        if (freeHours.length === 0) {
+          throw new Error(`No available hours left on ${interviewDate}`);
+        }
+
+        const randomIndex = Math.floor(Math.random() * freeHours.length);
+        const chosenHour = freeHours[randomIndex];
+        const newTime = `${chosenHour < 10 ? "0" + chosenHour : chosenHour}:00`;
+
+        takenHours.add(chosenHour);
+
+        const updatedInterview = {
+          ...interview,
+          time: newTime,
+        };
+
+        const saved = await Interview.create(updatedInterview);
+
+        console.log(
+          `📆 Rescheduled interview for ${saved.candidateName} to ${saved.date} ${saved.time}`
+        );
+
+        call.write(saved.toObject());
+      } catch (err) {
+        console.error("❌ Error processing interview:", err.message);
+      }
+    })();
+
+    savePromises.push(savePromise);
+  });
+
+  call.on("end", async () => {
+    await Promise.all(savePromises);
+    console.log("✅ All interviews processed and rescheduled.");
+    call.end();
+  });
+
+  call.on("error", (err) => {
+    console.error("❌ Stream error:", err.message);
+  });
+}
+
 // ---- gRPC Server Initialization ----
 const server = new grpc.Server();
 
@@ -272,6 +361,7 @@ server.addService(interviewProto.InterviewService.service, {
   ScheduleInterviews,
   UpdateInterview,
   DeleteInterview,
+  StreamAndReschedule,
 });
 
 const PORT = process.env.INTERVIEW_PORT || 50053;

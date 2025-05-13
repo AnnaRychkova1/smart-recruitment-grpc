@@ -115,3 +115,70 @@ export const deleteInterview = async (req, res) => {
     id: response.id,
   });
 };
+
+export const rescheduleInterviews = async (req, res) => {
+  console.log("[client:interview] 🟡 Starting to reschedule interviews...");
+
+  const client = await getGrpcClientForService("InterviewService");
+  const { interviews } = req.body;
+
+  if (!Array.isArray(interviews) || interviews.length === 0) {
+    return res
+      .status(400)
+      .json({ message: "No interviews provided to reschedule." });
+  }
+
+  console.log(
+    "[client:interview] 🟡 Received interviews to reschedule:",
+    interviews
+  );
+
+  const metadata = new Metadata();
+  metadata.add("authorization", `${req.headers.authorization}`);
+
+  try {
+    const response = await new Promise((resolve, reject) => {
+      const stream = client.StreamAndReschedule(metadata);
+
+      const receivedResponses = [];
+
+      stream.on("data", (data) => {
+        console.log("[client:interview] 🟢 Server response received:", data);
+        receivedResponses.push(data);
+      });
+
+      stream.on("end", () => {
+        console.log(
+          "[client:interview] ✅ Stream ended. All interview are rescheduled."
+        );
+        resolve({
+          message: `Rescheduling completed for ${receivedResponses.length} candidates`,
+          scheduled: receivedResponses,
+        });
+      });
+
+      stream.on("error", (err) => {
+        console.error("[client:interview] ❌ Stream error:", err);
+        reject(err);
+      });
+
+      for (const interview of interviews) {
+        console.log("[client:interview] 📤 Sending interview:", interview);
+        stream.write(interview);
+      }
+
+      stream.end();
+    });
+
+    return res.status(200).json(response);
+  } catch (error) {
+    console.error(
+      "[client:interview] ❌ Failed to reschedule interviews:",
+      error
+    );
+    return res.status(500).json({
+      message: "Failed to reschedule interviews",
+      error: error.message,
+    });
+  }
+};

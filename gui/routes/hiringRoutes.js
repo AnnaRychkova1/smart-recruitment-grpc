@@ -11,7 +11,7 @@ import {
   getCandidates,
   updateCandidate,
   deleteCandidate,
-  AddManyCandidates,
+  addManyCandidates,
 } from "../controllers/hiringController.js";
 
 const router = Router();
@@ -27,7 +27,7 @@ router.post(
   "/bulk-add-candidates",
   authenticateToken,
   uploadMultiple.array("pathCV", 10),
-  asyncHandler(AddManyCandidates)
+  asyncHandler(addManyCandidates)
 );
 router.get("/get-candidates", authenticateToken, asyncHandler(getCandidates));
 router.put(
