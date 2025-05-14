@@ -65,7 +65,7 @@ button:focus {
   margin: auto;
   padding: 40px;
   border: 1px solid #888;
-  width: 80%;
+  width: 60%;
   border-radius: 10px;
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
   transform: scale(0.9);
@@ -131,6 +131,12 @@ label {
 /* Form Styles */
 form {
   margin-top: 20px;
+}
+
+#signup-form,
+#signin-form {
+  width: 60%;
+  margin: auto;
 }
 
 /* List Styles */
