@@ -46,6 +46,8 @@ export const handleSignin = async (req, res, next) => {
       });
     });
 
+    console.log("[client:auth]📦 Received from backend:", response);
+
     res.status(200).json({
       name: response.name,
       token: response.token,

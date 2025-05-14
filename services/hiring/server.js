@@ -131,14 +131,22 @@ async function AddManyCandidates(call, callback) {
       try {
         const candidateData = await analyzeCVAndExtractCandidate(pathCV);
 
-        const newCandidate = new Candidate({
-          ...candidateData,
-          pathCV,
-        });
+        if (
+          !candidateData.name ||
+          !candidateData.email ||
+          !candidateData.position
+        ) {
+          failed.push(candidateData);
+        } else {
+          const newCandidate = new Candidate({
+            ...candidateData,
+            pathCV,
+          });
 
-        const saved = await newCandidate.save();
-        console.log(`✅ Saved candidate with CV: ${saved.pathCV}`);
-        insertedCandidates.push(saved);
+          const saved = await newCandidate.save();
+          console.log(`✅ Saved candidate with CV: ${saved.pathCV}`);
+          insertedCandidates.push(saved);
+        }
       } catch (err) {
         console.error(
           `❌ Failed to save candidate with CV: ${pathCV}`,

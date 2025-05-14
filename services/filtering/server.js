@@ -136,13 +136,17 @@ async function DeleteCandidate(call, callback) {
     });
   }
   const { id } = call.request;
+  console.log(id);
 
   try {
     const candidate = await Filtered.findByIdAndDelete(id);
 
+    console.log(candidate);
+
     if (!candidate) {
-      return callback(null, {
-        message: `Candidate with ID ${id} not found in filtered collection.`,
+      return callback({
+        code: grpc.status.NOT_FOUND,
+        message: `Candidate with ID ${candidate._id} not found in filtered collection.`,
         id: id,
       });
     }

@@ -24,8 +24,7 @@ export async function analyzeCVWithAI(cvText, position) {
   
   Please answer only:
   - "yes" if it's a real CV and matches the position (if specified),
-  - "no" otherwise.
-  `;
+  - "no" otherwise, followed by a brief reason why it's not a match.`;
 
   console.log("🟡 Prompt being sent to OpenAI:");
 

@@ -33,12 +33,34 @@ You are a CV analysis system. Analyze the following resume text and return struc
   "experience": number_of_years_of_experience (number)
 }
 
-If any field is missing or unclear, use a default placeholder.
+If any field is missing or unclear, return "null" for that field. Provide an explanation for each "null" value.
+Do not include other information about education, or work experience. But you can include skills.
+Please ensure that if experience is missing, return 0 as the value for experience.
 
 Here is the resume:
 """
 ${text.slice(0, 3500)}
-"""`;
+"""
+`;
+
+    //     const prompt = `
+    // You are a CV analysis system. Analyze the following resume text and return structured candidate information in JSON format:
+    // {
+    //   "name": "Full Name",
+    //   "email": "email@example.com",
+    //   "position": "Desired Position",
+    //   "experience": number_of_years_of_experience (number)
+    // }
+
+    // If any field is missing or unclear, return "null" for that field.
+    // Do not include other information like education, skills, or work experience.
+    // Please ensure that if experience is missing, return 0 as the value for experience.
+
+    // Here is the resume:
+    // """
+    // ${text.slice(0, 3500)}
+    // """
+    // `;
 
     const aiResponse = await openai.chat.completions.create({
       model: "gpt-4",
@@ -64,10 +86,10 @@ ${text.slice(0, 3500)}
     }
 
     return {
-      name: candidate.name || "Unnamed",
-      email: candidate.email || "unknown@example.com",
-      position: candidate.position || "Unknown",
-      experience: Number(candidate.experience) || 0,
+      name: candidate.name || null,
+      email: candidate.email || null,
+      position: candidate.position || null,
+      experience: candidate.experience ? Number(candidate.experience) : 0,
     };
   } catch (err) {
     console.error("❌ analyzeCVAndExtractCandidate error:", err.message);

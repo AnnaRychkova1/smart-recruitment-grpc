@@ -138,7 +138,8 @@ export const getCandidates = async (req, res) => {
 
   console.log(
     "[client:hiring] ✅ Stream ended. Candidates received:",
-    candidates.length
+    candidates.length,
+    candidates
   );
 
   return res.status(200).json({

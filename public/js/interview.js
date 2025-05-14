@@ -239,6 +239,20 @@ async function saveEditInterview(e) {
 
     // Update only the edited interview in the DOM without reloading the entire table
     if (interview) {
+      let scheduled = JSON.parse(
+        localStorage.getItem("scheduledInterviews") || "[]"
+      );
+
+      const index = scheduled.findIndex((item) => item._id === interview._id);
+
+      if (index !== -1) {
+        scheduled[index] = interview;
+
+        localStorage.setItem("scheduledInterviews", JSON.stringify(scheduled));
+        console.log("✅ Interview updated in localStorage");
+      } else {
+        console.warn("❌ Interview not found in localStorage");
+      }
       updateInterviewInDOM(interview);
     }
   } catch (err) {
@@ -269,9 +283,10 @@ async function deleteInterview(id) {
     if (result.id) {
       alert("🗑️ Interview deleted.");
       deleteInterviewFromDom(toDelete);
-      const interviews = JSON.parse(localStorage.getItem("interviews")) || [];
+      const interviews =
+        JSON.parse(localStorage.getItem("scheduledInterviews")) || [];
       const updatedInterviews = interviews.filter(
-        (interview) => interview.id !== id
+        (interview) => interview._id !== id
       );
       localStorage.setItem(
         "scheduledInterviews",
@@ -371,6 +386,7 @@ async function rescheduleInterviews() {
     localStorage.removeItem("scheduledInterviews");
 
     const scheduled = result.scheduled;
+    console.log("before local Storage", scheduled);
     localStorage.setItem("scheduledInterviews", JSON.stringify(scheduled));
 
     const tableBody = document.getElementById("schedule-body");
@@ -381,11 +397,16 @@ async function rescheduleInterviews() {
       return;
     }
     filterSection.style.display = "none";
+
+    console.log("before sorting", scheduled);
+
     scheduled.sort((a, b) => {
       const dateTimeA = new Date(`${a.date}T${a.time}:00`);
       const dateTimeB = new Date(`${b.date}T${b.time}:00`);
       return dateTimeA - dateTimeB;
     });
+
+    console.log("before setting to dom", scheduled);
     scheduled.forEach((entry) => {
       const row = document.createElement("tr");
       row.setAttribute("data-id", entry._id);

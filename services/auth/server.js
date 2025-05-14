@@ -97,7 +97,7 @@ async function SignIn(call, callback) {
 
     const token = generateToken({ name: user.name, email });
 
-    console.log("✅ Credentials are valid");
+    console.log("✅ Credentials are valid", user.name, password);
 
     callback(null, { name: user.name, token });
   } catch (err) {

@@ -329,7 +329,7 @@ async function StreamAndReschedule(call) {
         const saved = await Interview.create(updatedInterview);
 
         console.log(
-          `📆 Rescheduled interview for ${saved.candidateName} to ${saved.date} ${saved.time}`
+          `📆 Rescheduled interview for ${saved.name} to ${saved.date} ${saved.time}`
         );
 
         call.write(saved.toObject());

@@ -149,7 +149,7 @@ export const rescheduleInterviews = async (req, res) => {
 
       stream.on("end", () => {
         console.log(
-          "[client:interview] ✅ Stream ended. All interview are rescheduled."
+          `[client:interview] ✅ Stream ended. All interview are rescheduled.`
         );
         resolve({
           message: `Rescheduling completed for ${receivedResponses.length} candidates`,
