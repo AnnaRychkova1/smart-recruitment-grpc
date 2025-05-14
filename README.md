@@ -24,7 +24,7 @@ This app follows a **modular microservice structure** with gRPC communication an
 
 ---
 
-![Architecture](./screenshots/Architecture1.png)
+![Architecture](./screenshots/Architecture.png)
 
 ---
 
