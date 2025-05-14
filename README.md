@@ -22,6 +22,12 @@ Welcome to the Smart Recruitment System — a distributed application for managi
 
 This app follows a **modular microservice structure** with gRPC communication and HTTP endpoints.
 
+---
+
+![Architecture](./screenshots/Architecture1.png)
+
+---
+
 ### 🔐 Auth Service (`/services/auth`)
 
 Handles user registration and login.
