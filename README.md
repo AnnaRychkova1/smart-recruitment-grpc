@@ -26,6 +26,17 @@ This app follows a **modular microservice structure** with gRPC communication an
 
 ![Architecture](./screenshots/Architecture.png)
 
+Each service communicates over gRPC using **four types of RPC streaming**, depending on the use case:
+
+| Type                               | Example                       | Description                                                                                                            |
+| ---------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 🟢 **Unary RPC**                   | Auth Service, simple CRUD ops | One request → one response. Ideal for login, signup, or single record updates.                                         |
+| 🔵 **Server Streaming RPC**        | Filtering Service             | Server streams multiple results for a single client request (e.g., sending all filtered candidates).                   |
+| 🟠 **Client Streaming RPC**        | Hiring Service                | Client streams multiple messages, then the server returns a single aggregated response (e.g., uploading multiple CVs). |
+| 🔴 **Bidirectional Streaming RPC** | Interview Service             | Both client and server stream messages simultaneously — used for real-time rescheduling of interviews.                 |
+
+> ⚙️ These streaming types make the system scalable and interactive — each microservice handles data in the most efficient way for its task.
+
 ---
 
 ### 🔐 Auth Service (`/services/auth`)

@@ -3,21 +3,18 @@ syntax = "proto3";
 package hiring;
 
 service HiringService {
-
-  // Simple RPC
+  
+  // 🟢 Unary RPC
   rpc AddCandidate (CandidateRequest) returns (AddResponse);
+  rpc UpdateCandidate (UpdateRequest) returns (UpdateResponse);
+  rpc DeleteCandidate (DeleteRequest) returns (DeleteResponse);
 
-  // Client Streaming RPC
+  // 🟠 Client Streaming RPC
   rpc AddManyCandidates (stream pathCV) returns (AddManyResponse);
 
-  // Server Streaming RPC
+  // 🔵 Server Streaming RPC
   rpc GetAllCandidates (Empty) returns (stream Candidate);
-
-  // Update candidate
-  rpc UpdateCandidate (UpdateRequest) returns (UpdateResponse);
-
-  // Delete candidate
-  rpc DeleteCandidate (DeleteRequest) returns (DeleteResponse);
+  
 }
 
 message CandidateRequest {

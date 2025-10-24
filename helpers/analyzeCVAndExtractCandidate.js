@@ -30,10 +30,12 @@ You are a CV analysis system. Analyze the following resume text and return struc
   "name": "Full Name",
   "email": "email@example.com",
   "position": "Desired Position",
-  "experience": number_of_years_of_experience (number)
+  "experience": number_of_years_of_experience (number),
 }
 
-If any field is missing or unclear, return "null" for that field. Provide an explanation for each "null" value.
+If any field is missing or unclear, return "null" for that field and include field "explanation", where you shortly explain what is document looks like.
+If the document is clearly not a CV (for example: a form, letter, essay, or unrelated text), please mention that it is NOT a CV.
+Provide an explanation for each "null" value.
 Do not include other information about education, or work experience. But you can include skills.
 Please ensure that if experience is missing, return 0 as the value for experience.
 
@@ -42,25 +44,6 @@ Here is the resume:
 ${text.slice(0, 3500)}
 """
 `;
-
-    //     const prompt = `
-    // You are a CV analysis system. Analyze the following resume text and return structured candidate information in JSON format:
-    // {
-    //   "name": "Full Name",
-    //   "email": "email@example.com",
-    //   "position": "Desired Position",
-    //   "experience": number_of_years_of_experience (number)
-    // }
-
-    // If any field is missing or unclear, return "null" for that field.
-    // Do not include other information like education, skills, or work experience.
-    // Please ensure that if experience is missing, return 0 as the value for experience.
-
-    // Here is the resume:
-    // """
-    // ${text.slice(0, 3500)}
-    // """
-    // `;
 
     const aiResponse = await openai.chat.completions.create({
       model: "gpt-4",
@@ -73,10 +56,9 @@ ${text.slice(0, 3500)}
 
     const content = aiResponse.choices[0].message.content;
 
-    const answer = aiResponse.choices[0].message.content.trim().toLowerCase();
+    const answer = aiResponse.choices[0].message.content.trim();
 
     console.log("🟢 AI response received:");
-    console.log(answer);
 
     let candidate;
     try {
@@ -85,6 +67,28 @@ ${text.slice(0, 3500)}
       throw new Error("Failed to parse AI response as JSON:\n" + content);
     }
 
+    const nameNull = !candidate.name;
+    const emailNull = !candidate.email;
+    const positionNull = !candidate.position;
+    const expZero = candidate.experience === 0;
+
+    if (nameNull && emailNull && positionNull && expZero) {
+      if (!candidate.explanation) {
+        console.log(
+          "⚠️ This document doesn’t look like a CV (no candidate info found)."
+        );
+      } else {
+        console.log(`⚠️ This document is not a CV: ${candidate.explanation}`);
+      }
+      return {
+        name: null,
+        email: null,
+        position: null,
+        experience: 0,
+      };
+    }
+
+    console.log(`✅ Candidate extracted: ${answer}`);
     return {
       name: candidate.name || null,
       email: candidate.email || null,

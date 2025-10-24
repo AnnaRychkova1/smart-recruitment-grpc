@@ -2,28 +2,21 @@ syntax = "proto3";
 
 package interview;
 
-// gRPC service for scheduling, editing, and deleting interviews
 service InterviewService {
-
-  // Schedule interviews for filtered candidates on a specific date
-  rpc ScheduleInterviews (ScheduleRequest) returns (ScheduleResponse);
-
-  // Bi-directional streaming: client streams interviews, server responds with modified versions
+  
+  // 🟥 Bidirectional Streaming RPC
   rpc StreamAndReschedule (stream ScheduledInterview) returns (stream ScheduledInterview);
-
-  // Edit an existing interview by ID
+  
+  // 🟢 Unary RPC
+  rpc ScheduleInterviews (ScheduleRequest) returns (ScheduleResponse);
   rpc UpdateInterview (UpdateRequest) returns (UpdateResponse);
-
-  // Delete an interview by ID
   rpc DeleteInterview (DeleteRequest) returns (DeleteResponse);
 }
 
-// Request to schedule multiple candidates on a specific date
 message ScheduleRequest {
   string date = 1;
 }
 
-// Scheduled interview info returned to the client
 message ScheduledInterview {
   string _id = 1;
   string name = 2;
@@ -31,31 +24,26 @@ message ScheduledInterview {
   string time = 4; // Format: HH:mm
 }
 
-// Response after scheduling
 message ScheduleResponse {
   string message = 1;
   repeated ScheduledInterview scheduled = 2;
 }
 
-// Request to edit an existing interview
 message UpdateRequest {
   string id = 1;
   string new_date = 2; 
   string new_time = 3; 
 }
 
-// Response after editing interview
 message UpdateResponse {
   string message = 1;
   ScheduledInterview updated = 2;
 }
 
-// Request to delete an interview
 message DeleteRequest {
   string id = 1;
 }
 
-// Response after deletion
 message DeleteResponse {
   string message = 1;
   string id = 2;

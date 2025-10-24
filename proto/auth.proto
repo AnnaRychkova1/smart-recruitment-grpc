@@ -3,6 +3,8 @@ syntax = "proto3";
 package auth;
 
 service AuthService {
+  
+  // 🟢 Unary RPC
   rpc SignUp (SignUpRequest) returns (AuthResponse);
   rpc SignIn (SignInRequest) returns (AuthResponse);
 }

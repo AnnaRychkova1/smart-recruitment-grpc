@@ -3,11 +3,11 @@ syntax = "proto3";
 package filtering;
 
 service FilteringService {
-
-  // gRPC for filtering candidates based on experience and position
+  
+  // 🔵 Server Streaming RPC
   rpc FilterCandidates (FilterRequest) returns (stream Candidate);
 
-  // RPC for deleting a candidate
+  // 🟢 Unary RPC
   rpc DeleteCandidate (DeleteRequest) returns (DeleteResponse);
 }
 
@@ -26,12 +26,10 @@ message Candidate {
   string pathCV = 6;
 }
 
-// Message for the request to delete a candidate
 message DeleteRequest {
   string id = 1; 
 }
 
-// Message for the response status of an operation
 message DeleteResponse {
   string message = 1;
   string id = 2;
