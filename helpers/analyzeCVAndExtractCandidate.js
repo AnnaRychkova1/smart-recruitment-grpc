@@ -36,7 +36,7 @@ You are a CV analysis system. Analyze the following resume text and return struc
 If any field is missing or unclear, return "null" for that field and include field "explanation", where you shortly explain what is document looks like.
 If the document is clearly not a CV (for example: a form, letter, essay, or unrelated text), please mention that it is NOT a CV.
 Provide an explanation for each "null" value.
-Do not include other information about education, or work experience. But you can include skills.
+Do not include other information about education, or work experience.
 Please ensure that if experience is missing, return 0 as the value for experience.
 
 Here is the resume:
